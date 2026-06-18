@@ -1,101 +1,83 @@
-import Image from "next/image";
+import { requireAuth, getUserBusinessUnits, businessUnitSlug } from "@/lib/business-unit";
+import { getOrganizationDashboard } from "@/lib/queries/organization-dashboard";
+import { OrgShell } from "@/components/layout/org-shell";
+import type { BusinessUnitNav } from "@/components/layout/business-units-nav";
+import { PageHeader } from "@/components/layout/page-header";
+import { CreateBusinessUnitForm } from "@/components/dashboard/create-business-unit-form";
+import { OrganizationOverview } from "@/components/dashboard/organization-overview";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatUsd } from "@/lib/currency";
+import { cn } from "@/lib/utils";
 
-export default function Home() {
+export default async function HomePage() {
+  const { user } = await requireAuth();
+  const [dashboard, memberships] = await Promise.all([
+    getOrganizationDashboard(user.id),
+    getUserBusinessUnits(user.id),
+  ]);
+
+  const businessUnits: BusinessUnitNav[] = memberships.map((m) => ({
+    id: m.businessUnitId,
+    slug: m.businessUnit ? businessUnitSlug(m.businessUnit) : m.businessUnitId,
+    name: m.businessUnit?.name ?? m.businessUnitId,
+  }));
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <OrgShell
+      userName={user.name}
+      userEmail={user.email}
+      businessUnits={businessUnits}
+    >
+      <PageHeader
+        title="Panel principal"
+        description={`Vista consolidada de sus unidades de negocio · ${dashboard.periodLabel}`}
+      />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryCard label="Unidades" value={String(dashboard.totals.unitCount)} />
+        <SummaryCard
+          label="Ingresos totales"
+          value={formatUsd(dashboard.totals.income)}
+          valueClassName="text-emerald-700"
+        />
+        <SummaryCard
+          label="Costos totales"
+          value={formatUsd(dashboard.totals.costs)}
+          valueClassName="text-red-600"
+        />
+        <SummaryCard
+          label="Resultado neto"
+          value={formatUsd(dashboard.totals.net)}
+          valueClassName={
+            dashboard.totals.net >= 0 ? "text-emerald-700" : "text-red-600"
+          }
+        />
+      </div>
+
+      <OrganizationOverview data={dashboard} />
+
+      <CreateBusinessUnitForm />
+    </OrgShell>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <Card className="shadow-sm">
+      <CardContent className="p-5">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className={cn("mt-1 text-2xl font-bold tracking-tight", valueClassName)}>
+          {value}
+        </p>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,0 +1,169 @@
+export const Role = {
+  OWNER: "OWNER",
+  ADMIN: "ADMIN",
+  ACCOUNTANT: "ACCOUNTANT",
+  VIEWER: "VIEWER",
+} as const;
+export type Role = (typeof Role)[keyof typeof Role];
+
+export const CategoryType = {
+  COST: "COST",
+  INCOME: "INCOME",
+} as const;
+export type CategoryType = (typeof CategoryType)[keyof typeof CategoryType];
+
+export const Currency = {
+  USD: "USD",
+  NIO: "NIO",
+} as const;
+export type Currency = (typeof Currency)[keyof typeof Currency];
+
+export const MeasurementUnit = {
+  UNIT: "unidad",
+  LITER: "litro",
+  GALLON: "galon",
+  KILOGRAM: "kg",
+  POUND: "libra",
+  BOX: "caja",
+  BAG: "bolsa",
+} as const;
+export type MeasurementUnit =
+  (typeof MeasurementUnit)[keyof typeof MeasurementUnit];
+
+export const MEASUREMENT_UNITS = Object.values(MeasurementUnit);
+
+export const PeriodType = {
+  MONTHLY: "MONTHLY",
+  QUARTERLY: "QUARTERLY",
+  YEARLY: "YEARLY",
+  CUSTOM: "CUSTOM",
+} as const;
+export type PeriodType = (typeof PeriodType)[keyof typeof PeriodType];
+
+export type User = {
+  id: string;
+  name: string | null;
+  email: string;
+  createdAt: string;
+};
+
+export type BusinessUnit = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  measurementUnit: MeasurementUnit;
+  basePricePerUnit: number | null;
+  baseCurrency: Currency;
+  createdAt: string;
+};
+
+export type Membership = {
+  id: string;
+  userId: string;
+  businessUnitId: string;
+  role: Role;
+  businessUnit?: BusinessUnit;
+};
+
+export type Category = {
+  id: string;
+  businessUnitId: string | null;
+  type: CategoryType;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  isPlantCategory: boolean;
+  createdAt: string;
+};
+
+export type Plant = {
+  id: string;
+  businessUnitId: string;
+  name: string;
+  description: string | null;
+  basePrice: number;
+  stock: number | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type CostEntry = {
+  id: string;
+  businessUnitId: string;
+  categoryId: string;
+  date: string;
+  description: string;
+  currency: Currency;
+  amount: number;
+  exchangeRate: number | null;
+  amountUsd: number;
+  receiptUrl: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category;
+};
+
+export type CostEntryWithCategory = CostEntry & { category: Category };
+
+export type IncomeLine = {
+  id: string;
+  incomeEntryId: string;
+  plantId: string | null;
+  description: string | null;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  plant?: Plant | null;
+};
+
+export type IncomeEntry = {
+  id: string;
+  businessUnitId: string;
+  categoryId: string;
+  date: string;
+  description: string | null;
+  currency: Currency;
+  amount: number;
+  saleQuantity: number | null;
+  unitPrice: number | null;
+  exchangeRate: number | null;
+  amountUsd: number;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category;
+  lines?: IncomeLine[];
+};
+
+export type IncomeEntryWithRelations = IncomeEntry & {
+  category: Category;
+  lines: IncomeLine[];
+};
+
+export type Budget = {
+  id: string;
+  businessUnitId: string;
+  name: string;
+  periodType: PeriodType;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+};
+
+export type BudgetLine = {
+  id: string;
+  budgetId: string;
+  categoryId: string;
+  type: CategoryType;
+  plannedAmountUsd: number;
+  category?: Category;
+};
+
+export type Setting = {
+  id: string;
+  businessUnitId: string | null;
+  key: string;
+  value: string;
+};

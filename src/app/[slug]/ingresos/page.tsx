@@ -1,0 +1,53 @@
+import { CategoryType } from "@/types/database";
+import { requireBusinessUnitAccess } from "@/lib/business-unit";
+import { getCategories } from "@/lib/actions/categories";
+import { getPlants } from "@/lib/actions/plants";
+import { getIncomeGroupedByMonth } from "@/lib/queries/income";
+import { getCurrentMonthKey } from "@/lib/queries/costs";
+import { getExchangeRate } from "@/lib/currency";
+import { canWriteEntries } from "@/lib/permissions";
+import { IngresosClient } from "./ingresos-client";
+
+export default async function IngresosPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams: {
+    dateFrom?: string;
+    dateTo?: string;
+    categoryId?: string;
+    plantId?: string;
+  };
+}) {
+  const { slug } = params;
+  const sp = searchParams;
+  const { membership, businessUnit } = await requireBusinessUnitAccess(slug);
+  const businessUnitId = businessUnit.id;
+
+  const [categories, plants, months, defaultExchangeRate] = await Promise.all([
+    getCategories(businessUnitId, CategoryType.INCOME),
+    getPlants(businessUnitId),
+    getIncomeGroupedByMonth(businessUnitId, {
+      dateFrom: sp.dateFrom ? new Date(sp.dateFrom) : undefined,
+      dateTo: sp.dateTo ? new Date(sp.dateTo) : undefined,
+      categoryId: sp.categoryId,
+      plantId: sp.plantId,
+    }),
+    getExchangeRate(businessUnitId),
+  ]);
+
+  return (
+    <IngresosClient
+      businessUnitId={businessUnitId}
+      measurementUnit={businessUnit.measurementUnit}
+      basePricePerUnit={businessUnit.basePricePerUnit}
+      categories={categories}
+      plants={plants}
+      months={months}
+      defaultMonthKey={getCurrentMonthKey()}
+      defaultExchangeRate={defaultExchangeRate}
+      canWrite={canWriteEntries(membership.role)}
+    />
+  );
+}
