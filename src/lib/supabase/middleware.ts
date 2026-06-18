@@ -1,13 +1,42 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function getSupabaseEnv() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+  return { url, anonKey };
+}
+
+function copyCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach((cookie) => {
+    to.cookies.set(cookie.name, cookie.value);
+  });
+}
+
 export async function updateSession(request: NextRequest) {
+  const env = getSupabaseEnv();
+  const pathname = request.nextUrl.pathname;
+  const isLoginPage = pathname === "/login";
+  const isAuthCallback = pathname.startsWith("/auth/");
+
+  if (!env) {
+    console.error(
+      "[middleware] Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY"
+    );
+    if (isLoginPage || isAuthCallback) {
+      return NextResponse.next();
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("error", "config");
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  try {
+    const supabase = createServerClient(env.url, env.anonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -20,27 +49,39 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user && !isLoginPage && !isAuthCallback) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      const redirect = NextResponse.redirect(url);
+      copyCookies(supabaseResponse, redirect);
+      return redirect;
     }
-  );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    if (user && isLoginPage) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      const redirect = NextResponse.redirect(url);
+      copyCookies(supabaseResponse, redirect);
+      return redirect;
+    }
 
-  const isLoginPage = request.nextUrl.pathname === "/login";
-  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/");
+    return supabaseResponse;
+  } catch (error) {
+    console.error("[middleware] Error de sesión Supabase:", error);
 
-  if (!user && !isLoginPage && !isAuthCallback) {
+    if (isLoginPage || isAuthCallback) {
+      return NextResponse.next();
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    return redirect;
   }
-
-  if (user && isLoginPage) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-
-  return supabaseResponse;
 }
