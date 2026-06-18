@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useRef, useState, Suspense } from "react";
 import { Category, CostEntryWithCategory } from "@/types/database";
 import { CostForm } from "@/components/costs/cost-form";
 import { CostMonthlyTable } from "@/components/costs/cost-monthly-table";
