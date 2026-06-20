@@ -8,7 +8,6 @@ import {
   getBudgetExecution,
   parsePeriod,
 } from "@/lib/queries/dashboard";
-import { PageHeader } from "@/components/layout/page-header";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
 import { DistributionChart } from "@/components/dashboard/distribution-chart";
@@ -41,30 +40,33 @@ export default async function DashboardPage({
   ]);
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Estadísticas" description={period.label}>
+    <div className="flex flex-col gap-6 md:gap-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">{period.label}</p>
+        </div>
         <Suspense fallback={<div className="h-10 w-48 animate-pulse rounded-md bg-muted" />}>
           <PeriodSelector />
         </Suspense>
-      </PageHeader>
+      </div>
 
       <KpiCards {...kpis} />
 
       <MonthlyTrendChart data={trend} />
 
       <DistributionChart
-          title="Distribución de costos"
-          data={costDist}
-          businessUnitId={businessUnitId}
-          period={period}
-          entryType="cost"
-        />
-        <DistributionChart
-          title="Distribución de ingresos"
-          data={incomeDist}
-          businessUnitId={businessUnitId}
-          period={period}
-          entryType="income"
+        title="Distribución de costos"
+        data={costDist}
+        businessUnitId={businessUnitId}
+        period={period}
+        entryType="cost"
+      />
+      <DistributionChart
+        title="Distribución de ingresos"
+        data={incomeDist}
+        businessUnitId={businessUnitId}
+        period={period}
+        entryType="income"
       />
 
       <BudgetExecutionChart data={budget} />

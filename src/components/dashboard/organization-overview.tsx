@@ -7,18 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatUsd } from "@/lib/currency";
+import { chartColor } from "@/lib/chart-colors";
 import { cn } from "@/lib/utils";
 import type { OrganizationDashboardData } from "@/lib/queries/organization-dashboard";
-
-const COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "#6366f1",
-  "#f59e0b",
-];
 
 type OrganizationOverviewProps = {
   data: OrganizationDashboardData;
@@ -28,8 +19,8 @@ export function OrganizationOverview({ data }: OrganizationOverviewProps) {
   const { units, pieData, periodLabel } = data;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card className="shadow-sm">
+    <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base capitalize">
             Ingresos por unidad — {periodLabel}
@@ -42,7 +33,7 @@ export function OrganizationOverview({ data }: OrganizationOverviewProps) {
             </p>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -50,30 +41,36 @@ export function OrganizationOverview({ data }: OrganizationOverviewProps) {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={95}
-                    paddingAngle={2}
+                    innerRadius={48}
+                    outerRadius={72}
+                    paddingAngle={3}
                   >
                     {pieData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
+                        fill={chartColor(index)}
+                        stroke="#fff"
+                        strokeWidth={2}
                       />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value) => formatUsd(Number(value))} />
-                  <Legend />
+                  <Legend
+                    formatter={(value) => (
+                      <span className="text-sm text-foreground">{value}</span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {pieData.map((item, i) => (
                   <span
                     key={item.id}
-                    className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-xs"
                   >
                     <span
                       className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                      style={{ backgroundColor: chartColor(i) }}
                     />
                     {item.name} ({item.percentage.toFixed(1)}%)
                   </span>
@@ -84,7 +81,7 @@ export function OrganizationOverview({ data }: OrganizationOverviewProps) {
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Unidades de negocio</CardTitle>
         </CardHeader>
@@ -97,8 +94,8 @@ export function OrganizationOverview({ data }: OrganizationOverviewProps) {
             units.map((unit) => (
               <Button
                 key={unit.businessUnitId}
-                variant="outline"
-                className="h-auto w-full justify-between px-4 py-3"
+                variant="ghost"
+                className="h-auto w-full justify-between rounded-lg bg-muted/40 px-4 py-3 hover:bg-muted/70"
                 asChild
               >
                 <Link href={`/${unit.slug}`}>

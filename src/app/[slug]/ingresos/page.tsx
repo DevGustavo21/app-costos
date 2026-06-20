@@ -40,8 +40,6 @@ export default async function IngresosPage({
   return (
     <IngresosClient
       businessUnitId={businessUnitId}
-      measurementUnit={businessUnit.measurementUnit}
-      basePricePerUnit={businessUnit.basePricePerUnit}
       categories={categories}
       plants={plants}
       months={months}

@@ -25,6 +25,16 @@ export async function getExchangeRate(businessUnitId: string): Promise<number> {
   return DEFAULT_EXCHANGE_RATE;
 }
 
+export function computeAmountNio(
+  amount: number,
+  currency: Currency,
+  exchangeRate?: number | null
+): number {
+  if (currency === Currency.NIO) return amount;
+  const rate = exchangeRate ?? DEFAULT_EXCHANGE_RATE;
+  return amount * rate;
+}
+
 export function computeAmountUsd(
   amount: number,
   currency: Currency,
@@ -73,7 +83,7 @@ type IncomeDisplayEntry = {
   unitPrice: number | null;
 };
 
-/** Monto y USD para mostrar; ventas por volumen siempre en córdobas. */
+/** Montos C$ y USD para mostrar en tablas de ingresos. */
 export function resolveIncomeDisplay(
   entry: IncomeDisplayEntry,
   options: { volumePricing: boolean; defaultExchangeRate: number }
@@ -82,12 +92,14 @@ export function resolveIncomeDisplay(
   const currency =
     isVolume && options.volumePricing ? Currency.NIO : entry.currency;
   const exchangeRate =
-    currency === Currency.NIO
-      ? (entry.exchangeRate ?? options.defaultExchangeRate)
-      : entry.exchangeRate;
+    entry.exchangeRate ??
+    options.defaultExchangeRate;
+
+  const amountNio = computeAmountNio(entry.amount, currency, exchangeRate);
   const amountUsd =
     currency === Currency.NIO
       ? computeAmountUsd(entry.amount, Currency.NIO, exchangeRate)
-      : entry.amountUsd;
-  return { currency, exchangeRate, amountUsd };
+      : Number(entry.amountUsd);
+
+  return { currency, exchangeRate, amountNio, amountUsd };
 }

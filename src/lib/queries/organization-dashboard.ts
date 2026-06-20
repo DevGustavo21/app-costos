@@ -2,6 +2,7 @@ import { startOfMonth, endOfMonth, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { db, dateOnly } from "@/lib/db/helpers";
 import { getUserBusinessUnits, businessUnitSlug } from "@/lib/business-unit";
+import type { Membership } from "@/types/database";
 
 export type BusinessUnitOverview = {
   businessUnitId: string;
@@ -37,13 +38,14 @@ function aggregateByUnit(
 }
 
 export async function getOrganizationDashboard(
-  userId: string
+  userId: string,
+  memberships?: Membership[]
 ): Promise<OrganizationDashboardData> {
-  const memberships = await getUserBusinessUnits(userId);
+  const resolvedMemberships = memberships ?? (await getUserBusinessUnits(userId));
   const start = startOfMonth(new Date());
   const end = endOfMonth(start);
   const periodLabel = format(start, "MMMM yyyy", { locale: es });
-  const buIds = memberships.map((m) => m.businessUnitId);
+  const buIds = resolvedMemberships.map((m) => m.businessUnitId);
 
   if (buIds.length === 0) {
     return {
@@ -78,7 +80,7 @@ export async function getOrganizationDashboard(
   const incomeByUnit = aggregateByUnit(incomeRes.data ?? []);
   const costByUnit = aggregateByUnit(costRes.data ?? []);
 
-  const units: BusinessUnitOverview[] = memberships.map((m) => {
+  const units: BusinessUnitOverview[] = resolvedMemberships.map((m) => {
     const income = incomeByUnit.get(m.businessUnitId) ?? 0;
     const costs = costByUnit.get(m.businessUnitId) ?? 0;
     return {

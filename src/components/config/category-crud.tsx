@@ -30,6 +30,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { categorySchema, type CategoryFormValues } from "@/lib/validations/category";
 import {
   createCategory,
@@ -43,6 +44,7 @@ type CategoryCrudProps = {
   categories: Category[];
   title: string;
   showPlantFlag?: boolean;
+  productCounts?: Record<string, number>;
 };
 
 export function CategoryCrud({
@@ -51,10 +53,12 @@ export function CategoryCrud({
   categories,
   title,
   showPlantFlag = false,
+  productCounts = {},
 }: CategoryCrudProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
@@ -95,12 +99,14 @@ export function CategoryCrud({
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm("¿Eliminar o desactivar esta categoría?")) return;
+  const handleDelete = () => {
+    if (!confirmDeleteId) return;
+    const id = confirmDeleteId;
     startTransition(async () => {
       try {
         await deleteCategory(businessUnitId, type, id);
         toast.success("Categoría eliminada/desactivada");
+        setConfirmDeleteId(null);
         router.refresh();
       } catch {
         toast.error("Error al eliminar");
@@ -160,11 +166,17 @@ export function CategoryCrud({
                   control={form.control}
                   name="isPlantCategory"
                   render={({ field }) => (
-                    <FormItem className="flex items-center gap-2">
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <Label>Categoría de venta de plantas</Label>
+                    <FormItem className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <Label>Venta por catálogo en ingresos</Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Al registrar ingresos, permite elegir productos con cantidad y precio.
+                        Los subproductos (novillo, toro, vaca) se crean en Catálogo de productos.
+                      </p>
                     </FormItem>
                   )}
                 />
@@ -219,9 +231,14 @@ export function CategoryCrud({
                         <p className="text-xs text-muted-foreground">{cat.description}</p>
                       )}
                       {cat.isPlantCategory && (
-                        <Badge variant="secondary" className="mt-1">
-                          Plantas
-                        </Badge>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          <Badge variant="secondary">Catálogo</Badge>
+                          {(productCounts[cat.id] ?? 0) > 0 && (
+                            <Badge variant="outline">
+                              {productCounts[cat.id]} producto(s)
+                            </Badge>
+                          )}
+                        </div>
                       )}
                     </div>
                   </TableCell>
@@ -235,7 +252,7 @@ export function CategoryCrud({
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(cat)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(cat.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteId(cat.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
@@ -246,6 +263,18 @@ export function CategoryCrud({
           </Table>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmDeleteId != null}
+        onOpenChange={(open) => {
+          if (!open && !isPending) setConfirmDeleteId(null);
+        }}
+        title="¿Eliminar categoría?"
+        description="Si la categoría tiene registros asociados, se desactivará. De lo contrario, se eliminará permanentemente."
+        confirmLabel="Eliminar"
+        onConfirm={handleDelete}
+        isPending={isPending}
+      />
     </div>
   );
 }

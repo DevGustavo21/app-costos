@@ -9,25 +9,18 @@ export type AuthUser = {
   name: string | null;
 };
 
-async function syncUserProfile(user: {
+/** Sincroniza perfil en BD; usar en callback/login, no en cada request. */
+export async function ensureUserProfile(user: {
   id: string;
   email?: string;
   user_metadata?: { name?: string; full_name?: string };
 }) {
   if (!user.email) return;
 
-  const { data: existing } = await db()
-    .from("users")
-    .select("id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (existing) return;
-
   const name = user.user_metadata?.name ?? user.user_metadata?.full_name ?? null;
   await db()
     .from("users")
-    .upsert({ id: user.id, email: user.email, name }, { onConflict: "id" });
+    .upsert({ id: user.id, email: user.email, name }, { onConflict: "id", ignoreDuplicates: true });
 }
 
 export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
@@ -37,8 +30,6 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   } = await supabase.auth.getUser();
 
   if (!user?.email) return null;
-
-  await syncUserProfile(user);
 
   return {
     id: user.id,

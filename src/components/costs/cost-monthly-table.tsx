@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatAmount, formatUsd } from "@/lib/currency";
 import { MonthlyAccordionTable } from "@/components/shared/monthly-accordion-table";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { deleteCostEntry } from "@/lib/actions/costs";
 import type { MonthlyGroup } from "@/lib/queries/costs";
 
@@ -39,14 +40,17 @@ export function CostMonthlyTable({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const handleDelete = (id: string) => {
-    if (!confirm("¿Eliminar este registro de costo?")) return;
+  const handleDelete = () => {
+    if (!confirmDeleteId) return;
+    const id = confirmDeleteId;
     setDeletingId(id);
     startTransition(async () => {
       try {
         await deleteCostEntry(businessUnitId, id);
         toast.success("Costo eliminado");
+        setConfirmDeleteId(null);
         router.refresh();
       } catch {
         toast.error("Error al eliminar");
@@ -114,7 +118,7 @@ export function CostMonthlyTable({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(entry.id)}
+                    onClick={() => setConfirmDeleteId(entry.id)}
                     disabled={isPending && deletingId === entry.id}
                     aria-label="Eliminar costo"
                   >
@@ -130,11 +134,25 @@ export function CostMonthlyTable({
   );
 
   return (
-    <MonthlyAccordionTable
-      months={months}
-      defaultMonthKey={defaultMonthKey}
-      renderTable={renderTable}
-      emptyMessage="No hay costos registrados"
-    />
+    <>
+      <MonthlyAccordionTable
+        months={months}
+        defaultMonthKey={defaultMonthKey}
+        renderTable={renderTable}
+        emptyMessage="No hay costos registrados"
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteId != null}
+        onOpenChange={(open) => {
+          if (!open && !isPending) setConfirmDeleteId(null);
+        }}
+        title="¿Eliminar costo?"
+        description="Esta acción no se puede deshacer. El registro de costo se eliminará permanentemente."
+        confirmLabel="Eliminar"
+        onConfirm={handleDelete}
+        isPending={isPending && deletingId != null}
+      />
+    </>
   );
 }

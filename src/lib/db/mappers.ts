@@ -32,12 +32,19 @@ export function mapPlant(row: Row): Plant {
   return {
     id: row.id,
     businessUnitId: row.business_unit_id,
+    categoryId: row.category_id ?? null,
     name: row.name,
     description: row.description,
+    measurementUnit: (row.measurement_unit ?? MU.UNIT) as MeasurementUnit,
     basePrice: Number(row.base_price),
-    stock: row.stock,
+    stock: row.stock != null ? Number(row.stock) : null,
     isActive: row.is_active,
     createdAt: row.created_at,
+    category: row.category
+      ? mapCategory(row.category)
+      : row.categories
+        ? mapCategory(row.categories)
+        : null,
   };
 }
 
@@ -66,7 +73,7 @@ export function mapIncomeLine(row: Row): IncomeLine {
     incomeEntryId: row.income_entry_id,
     plantId: row.plant_id,
     description: row.description,
-    quantity: row.quantity,
+    quantity: Number(row.quantity),
     unitPrice: Number(row.unit_price),
     subtotal: Number(row.subtotal),
     plant: row.plant ? mapPlant(row.plant) : row.plants ? mapPlant(row.plants) : null,
@@ -151,15 +158,27 @@ export function toCategoryInsert(
 }
 
 export function toPlantInsert(
-  data: Pick<Plant, "businessUnitId" | "name" | "description" | "basePrice" | "stock" | "isActive"> & {
+  data: Pick<
+    Plant,
+    | "businessUnitId"
+    | "categoryId"
+    | "name"
+    | "description"
+    | "measurementUnit"
+    | "basePrice"
+    | "stock"
+    | "isActive"
+  > & {
     id: string;
   }
 ) {
   return {
     id: data.id,
     business_unit_id: data.businessUnitId,
+    category_id: data.categoryId,
     name: data.name,
     description: data.description,
+    measurement_unit: data.measurementUnit,
     base_price: data.basePrice,
     stock: data.stock,
     is_active: data.isActive,

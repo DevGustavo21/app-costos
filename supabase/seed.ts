@@ -36,10 +36,10 @@ const INCOME_CATEGORIES = [
 ];
 
 const PLANTS = [
-  { name: "Monstera", base_price: 25.0, stock: 50 },
-  { name: "Pothos", base_price: 12.0, stock: 80 },
-  { name: "Ficus", base_price: 35.0, stock: 30 },
-  { name: "Suculenta mix", base_price: 8.0, stock: 100 },
+  { name: "Monstera", base_price: 25.0, stock: 50, measurement_unit: MeasurementUnit.UNIT },
+  { name: "Pothos", base_price: 12.0, stock: 80, measurement_unit: MeasurementUnit.UNIT },
+  { name: "Ficus", base_price: 35.0, stock: 30, measurement_unit: MeasurementUnit.UNIT },
+  { name: "Suculenta mix", base_price: 8.0, stock: 100, measurement_unit: MeasurementUnit.UNIT },
 ];
 
 async function ensureAuthUser(supabase: ReturnType<typeof createAdminClient>) {

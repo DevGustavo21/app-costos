@@ -8,15 +8,27 @@ import { cn } from "@/lib/utils";
 type NavLinkProps = {
   href: string;
   exact?: boolean;
+  variant?: "page" | "context";
   onNavigate?: () => void;
   className?: string;
   children: React.ReactNode;
   icon?: React.ComponentType<{ className?: string }>;
 };
 
+const activeStyles = {
+  page: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200",
+  context: "bg-muted text-foreground ring-1 ring-border",
+} as const;
+
+const activeIconStyles = {
+  page: "text-emerald-700",
+  context: "text-foreground",
+} as const;
+
 export function NavLink({
   href,
   exact,
+  variant = "page",
   onNavigate,
   className,
   children,
@@ -53,7 +65,7 @@ export function NavLink({
       className={cn(
         "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
         active
-          ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+          ? activeStyles[variant]
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
         isPending && "opacity-60",
         className
@@ -67,7 +79,7 @@ export function NavLink({
             className={cn(
               "h-4 w-4 shrink-0",
               active
-                ? "text-emerald-700"
+                ? activeIconStyles[variant]
                 : "text-muted-foreground group-hover:text-foreground"
             )}
           />

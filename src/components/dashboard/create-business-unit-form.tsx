@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,10 +23,6 @@ import {
   businessUnitSchema,
   type BusinessUnitFormValues,
 } from "@/lib/validations/business-unit";
-import { MeasurementUnitField } from "@/components/shared/measurement-unit-field";
-import { BasePricePerUnitField } from "@/components/shared/base-price-per-unit-field";
-import { MeasurementUnit } from "@/types/database";
-import { usesVolumePricing } from "@/lib/measurement-unit";
 
 export function CreateBusinessUnitForm() {
   const router = useRouter();
@@ -37,18 +33,8 @@ export function CreateBusinessUnitForm() {
     defaultValues: {
       name: "",
       description: "",
-      measurementUnit: MeasurementUnit.UNIT,
-      basePricePerUnit: null,
     },
   });
-
-  const measurementUnit = form.watch("measurementUnit");
-
-  useEffect(() => {
-    if (!usesVolumePricing(measurementUnit)) {
-      form.setValue("basePricePerUnit", null);
-    }
-  }, [measurementUnit, form]);
 
   const onSubmit = (values: BusinessUnitFormValues) => {
     startTransition(async () => {
@@ -65,7 +51,7 @@ export function CreateBusinessUnitForm() {
   };
 
   return (
-    <Card className="shadow-sm">
+    <Card className="max-w-2xl">
       <CardHeader>
         <CardTitle className="text-base">Nueva unidad de negocio</CardTitle>
         <CardDescription>
@@ -110,24 +96,7 @@ export function CreateBusinessUnitForm() {
                 </FormItem>
               )}
             />
-            <MeasurementUnitField
-              control={form.control}
-              name="measurementUnit"
-              disabled={isPending}
-            />
-            {usesVolumePricing(measurementUnit) && (
-              <BasePricePerUnitField
-                control={form.control}
-                name="basePricePerUnit"
-                measurementUnit={measurementUnit}
-                disabled={isPending}
-              />
-            )}
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="w-full bg-emerald-700 hover:bg-emerald-800 sm:w-auto"
-            >
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending ? (
                 <>
                   <Loader2 className="animate-spin" />

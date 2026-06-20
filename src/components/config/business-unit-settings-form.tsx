@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,15 +18,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MeasurementUnitField } from "@/components/shared/measurement-unit-field";
-import { BasePricePerUnitField } from "@/components/shared/base-price-per-unit-field";
 import { updateBusinessUnit } from "@/lib/actions/business-units";
 import {
   businessUnitUpdateSchema,
   type BusinessUnitFormValues,
 } from "@/lib/validations/business-unit";
 import type { BusinessUnit } from "@/types/database";
-import { getMeasurementUnitLabel, usesVolumePricing } from "@/lib/measurement-unit";
 
 type BusinessUnitSettingsFormProps = {
   businessUnit: BusinessUnit;
@@ -43,19 +40,8 @@ export function BusinessUnitSettingsForm({
     defaultValues: {
       name: businessUnit.name,
       description: businessUnit.description ?? "",
-      measurementUnit: businessUnit.measurementUnit,
-      basePricePerUnit: businessUnit.basePricePerUnit,
     },
   });
-
-  const measurementUnit = form.watch("measurementUnit");
-  const showBasePrice = usesVolumePricing(measurementUnit);
-
-  useEffect(() => {
-    if (!usesVolumePricing(measurementUnit)) {
-      form.setValue("basePricePerUnit", null);
-    }
-  }, [measurementUnit, form]);
 
   const onSubmit = (values: BusinessUnitFormValues) => {
     startTransition(async () => {
@@ -75,13 +61,12 @@ export function BusinessUnitSettingsForm({
   };
 
   return (
-    <Card className="mx-auto max-w-2xl shadow-sm">
+    <Card className="mx-auto max-w-2xl">
       <CardHeader>
         <CardTitle>Datos de la unidad</CardTitle>
         <CardDescription>
-          Configure nombre, descripción y unidad de medida (
-          {getMeasurementUnitLabel(businessUnit.measurementUnit)}). Para líquidos,
-          el precio base se ingresa en córdobas y se convierte a USD al registrar ingresos.
+          Configure el nombre y la descripción de la unidad de negocio. La unidad de medida
+          se define por producto en el catálogo.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -118,24 +103,7 @@ export function BusinessUnitSettingsForm({
                 </FormItem>
               )}
             />
-            <MeasurementUnitField
-              control={form.control}
-              name="measurementUnit"
-              disabled={isPending}
-            />
-            {showBasePrice && (
-              <BasePricePerUnitField
-                control={form.control}
-                name="basePricePerUnit"
-                measurementUnit={measurementUnit}
-                disabled={isPending}
-              />
-            )}
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="bg-emerald-700 hover:bg-emerald-800"
-            >
+            <Button type="submit" disabled={isPending}>
               {isPending ? (
                 <>
                   <Loader2 className="animate-spin" />

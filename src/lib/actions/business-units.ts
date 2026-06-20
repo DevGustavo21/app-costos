@@ -10,52 +10,26 @@ import {
 } from "@/lib/validations/business-unit";
 import { ensureUniqueSlug } from "@/lib/slug";
 import { requireBusinessUnitAccess } from "@/lib/business-unit";
-import { usesVolumePricing } from "@/lib/measurement-unit";
-import { Role, MeasurementUnit } from "@/types/database";
-
-function buildBusinessUnitPayload(
-  data: {
-    name: string;
-    description?: string | null;
-    measurementUnit: MeasurementUnit;
-    basePricePerUnit?: number | null;
-  },
-  slug: string,
-  id: string
-) {
-  return {
-    id,
-    slug,
-    name: data.name,
-    description: data.description ?? null,
-    measurement_unit: data.measurementUnit,
-    base_price_per_unit: usesVolumePricing(data.measurementUnit)
-      ? (data.basePricePerUnit ?? null)
-      : null,
-    base_currency: "NIO" as const,
-  };
-}
+import { Role } from "@/types/database";
 
 async function insertBusinessUnit(
   id: string,
   slug: string,
-  data: {
-    name: string;
-    description?: string | null;
-    measurementUnit: MeasurementUnit;
-    basePricePerUnit?: number | null;
-  }
+  data: { name: string; description?: string | null }
 ) {
-  const payload = buildBusinessUnitPayload(data, slug, id);
+  const payload = {
+    id,
+    slug,
+    name: data.name,
+    description: data.description ?? null,
+    base_currency: "NIO" as const,
+  };
+
   const { error } = await db().from("business_units").insert(payload);
 
   if (!error) return;
 
-  if (
-    error.message.includes("slug") ||
-    error.message.includes("measurement_unit") ||
-    error.message.includes("base_price_per_unit")
-  ) {
+  if (error.message.includes("slug")) {
     const { error: fallbackError } = await db().from("business_units").insert({
       id,
       name: data.name,
@@ -101,40 +75,16 @@ export async function updateBusinessUnit(businessUnitId: string, input: unknown)
   const slug = await ensureUniqueSlug(data.name, businessUnit.id);
   const previousSlug = businessUnit.slug;
 
-  const updatePayload = {
-    name: data.name,
-    description: data.description ?? null,
-    measurement_unit: data.measurementUnit,
-    base_price_per_unit: usesVolumePricing(data.measurementUnit)
-      ? (data.basePricePerUnit ?? null)
-      : null,
-    slug,
-  };
-
-  let { data: updated, error } = await db()
+  const { data: updated, error } = await db()
     .from("business_units")
-    .update(updatePayload)
+    .update({
+      name: data.name,
+      description: data.description ?? null,
+      slug,
+    })
     .eq("id", businessUnit.id)
     .select()
     .single();
-
-  if (
-    error?.message.includes("measurement_unit") ||
-    error?.message.includes("base_price_per_unit")
-  ) {
-    const fallback = await db()
-      .from("business_units")
-      .update({
-        name: data.name,
-        description: data.description ?? null,
-        slug,
-      })
-      .eq("id", businessUnit.id)
-      .select()
-      .single();
-    updated = fallback.data;
-    error = fallback.error;
-  }
 
   if (error || !updated) throw new Error(error?.message ?? "No se pudo actualizar");
 
@@ -142,7 +92,6 @@ export async function updateBusinessUnit(businessUnitId: string, input: unknown)
   revalidatePath(`/${previousSlug}`);
   revalidatePath(`/${slug}`);
   revalidatePath(`/${slug}/configuracion/unidad`);
-  revalidatePath(`/${slug}/ingresos`);
 
   return {
     businessUnit: mapBusinessUnit(updated),

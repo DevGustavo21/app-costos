@@ -8,6 +8,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { syncProfileAfterLogin } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -54,6 +55,7 @@ export default function LoginPage() {
         return;
       }
 
+      await syncProfileAfterLogin();
       router.push("/");
       router.refresh();
     });

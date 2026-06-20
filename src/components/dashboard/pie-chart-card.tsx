@@ -4,19 +4,10 @@ import { useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatUsd } from "@/lib/currency";
+import { chartColor } from "@/lib/chart-colors";
 import { cn } from "@/lib/utils";
 
-export const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "#6366f1",
-  "#f59e0b",
-  "#ec4899",
-  "#14b8a6",
-];
+export { CHART_COLORS, chartColor } from "@/lib/chart-colors";
 
 export type PieChartDatum = {
   id: string;
@@ -54,9 +45,9 @@ export function PieChartCard({
   description,
   data,
   emptyMessage = "Sin datos en el período",
-  height = 280,
-  innerRadius = 55,
-  outerRadius = 95,
+  height = 220,
+  innerRadius = 48,
+  outerRadius = 72,
   showLegend = true,
   activeIndex: controlledActiveIndex,
   onSliceClick,
@@ -68,7 +59,7 @@ export function PieChartCard({
 
   if (chartData.length === 0 || chartData.every((d) => d.value <= 0)) {
     return (
-      <Card className={cn("shadow-sm", className)}>
+      <Card className={cn(className)}>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">{title}</CardTitle>
           {description && (
@@ -93,7 +84,7 @@ export function PieChartCard({
   };
 
   return (
-    <Card className={cn("shadow-sm", className)}>
+    <Card className={cn(className)}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
         {description && (
@@ -118,9 +109,9 @@ export function PieChartCard({
               {chartData.map((_, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={CHART_COLORS[index % CHART_COLORS.length]}
-                  stroke={activeIndex === index ? "hsl(var(--foreground))" : "none"}
-                  strokeWidth={activeIndex === index ? 2 : 0}
+                  fill={chartColor(index)}
+                  stroke="#fff"
+                  strokeWidth={2}
                   className="cursor-pointer outline-none transition-opacity hover:opacity-90"
                 />
               ))}
@@ -132,7 +123,13 @@ export function PieChartCard({
                 return [`${formatUsd(Number(value))} (${pct}%)`, item.name];
               }}
             />
-            {showLegend && <Legend />}
+            {showLegend && (
+              <Legend
+                formatter={(value) => (
+                  <span className="text-sm text-foreground">{value}</span>
+                )}
+              />
+            )}
           </PieChart>
         </ResponsiveContainer>
 
@@ -142,16 +139,16 @@ export function PieChartCard({
               key={item.id}
               type="button"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors",
                 activeIndex === i
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                  : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                  ? "bg-emerald-100 text-emerald-900"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted"
               )}
               onClick={() => handleSlice(i)}
             >
               <span
                 className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                style={{ backgroundColor: chartColor(i) }}
               />
               {item.name}
               <span className="font-medium">

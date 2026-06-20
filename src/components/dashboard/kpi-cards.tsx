@@ -1,7 +1,16 @@
 "use client";
 
-import { PieChartCard } from "@/components/dashboard/pie-chart-card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { formatUsd } from "@/lib/currency";
+import { cn } from "@/lib/utils";
+import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 
 type KpiCardsProps = {
   totalIncome: number;
@@ -18,54 +27,71 @@ export function KpiCards({
   netResult,
   variationPct,
   variationAbs,
-  prevNet,
 }: KpiCardsProps) {
-  const compositionData = [
-    { id: "income", name: "Ingresos", value: totalIncome },
-    { id: "costs", name: "Costos", value: totalCosts },
-  ].filter((item) => item.value > 0);
-
-  const resultData =
-    netResult >= 0
-      ? [{ id: "profit", name: "Utilidad", value: netResult }]
-      : [{ id: "loss", name: "Pérdida", value: Math.abs(netResult) }];
-
-  const variationData = [
-    { id: "current", name: "Mes actual", value: Math.abs(netResult) },
-    { id: "previous", name: "Mes anterior", value: Math.abs(prevNet) },
-  ].filter((item) => item.value > 0);
+  const cards = [
+    {
+      label: "Ingresos del período",
+      value: formatUsd(totalIncome),
+      valueClassName: "text-emerald-700",
+      badge: null,
+      footer: "Total registrado en el mes seleccionado",
+    },
+    {
+      label: "Costos del período",
+      value: formatUsd(totalCosts),
+      valueClassName: "text-red-600",
+      badge: null,
+      footer: "Total de egresos en el mes seleccionado",
+    },
+    {
+      label: "Resultado neto",
+      value: formatUsd(netResult),
+      valueClassName: netResult >= 0 ? "text-emerald-700" : "text-red-600",
+      badge:
+        variationPct !== 0 ? (
+          <Badge variant="outline">
+            {variationPct > 0 ? (
+              <TrendingUpIcon className="size-3" />
+            ) : (
+              <TrendingDownIcon className="size-3" />
+            )}
+            {variationPct > 0 ? "+" : ""}
+            {variationPct.toFixed(1)}%
+          </Badge>
+        ) : null,
+      footer: `${variationAbs >= 0 ? "+" : ""}${formatUsd(variationAbs)} vs mes anterior`,
+    },
+    {
+      label: "Margen",
+      value:
+        totalIncome > 0
+          ? `${((netResult / totalIncome) * 100).toFixed(1)}%`
+          : "—",
+      valueClassName: "text-foreground",
+      badge: null,
+      footer: "Utilidad sobre ingresos del período",
+    },
+  ];
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-      <PieChartCard
-        title="Composición del período"
-        description="Proporción entre ingresos y costos"
-        data={compositionData}
-        emptyMessage="Sin movimientos en el período"
-        height={240}
-        innerRadius={48}
-        outerRadius={82}
-      />
-      <PieChartCard
-        title="Resultado neto"
-        description={formatUsd(netResult)}
-        data={resultData}
-        emptyMessage="Sin resultado en el período"
-        height={240}
-        innerRadius={48}
-        outerRadius={82}
-        showLegend={false}
-      />
-      <PieChartCard
-        title="Variación mensual"
-        description={`${variationPct > 0 ? "+" : ""}${variationPct.toFixed(1)}% · ${variationAbs >= 0 ? "+" : ""}${formatUsd(variationAbs)}`}
-        data={variationData}
-        emptyMessage="Sin variación registrada"
-        height={240}
-        innerRadius={48}
-        outerRadius={82}
-        showLegend={false}
-      />
+    <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      {cards.map((card) => (
+        <Card key={card.label} className="@container/card">
+          <CardHeader>
+            <CardDescription>{card.label}</CardDescription>
+            <CardTitle
+              className={cn(
+                "text-2xl font-semibold tabular-nums @[250px]/card:text-3xl",
+                card.valueClassName
+              )}
+            >
+              {card.value}
+            </CardTitle>
+            {card.badge}
+          </CardHeader>
+          <CardFooter className="text-sm text-muted-foreground">{card.footer}</CardFooter>
+        </Card>
+      ))}
     </div>
   );
 }

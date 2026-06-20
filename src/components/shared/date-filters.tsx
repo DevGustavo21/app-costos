@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Category, Plant } from "@/types/database";
 
 type DateFiltersProps = {
@@ -52,80 +51,73 @@ export function DateFilters({
   };
 
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-medium">
-          <Filter className="h-4 w-4 text-emerald-600" />
-          Filtros
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+    <div className="rounded-xl bg-card p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <Filter className="h-4 w-4 text-primary" />
+        <h2 className="text-base font-semibold">Filtros</h2>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="space-y-1.5">
+          <Label htmlFor="dateFrom">Desde</Label>
+          <Input
+            id="dateFrom"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="dateTo">Hasta</Label>
+          <Input
+            id="dateTo"
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Categoría</Label>
+          <Select value={categoryId} onValueChange={setCategoryId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {showPlantFilter && (
           <div className="space-y-1.5">
-            <Label htmlFor="dateFrom">Desde</Label>
-            <Input
-              id="dateFrom"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="dateTo">Hasta</Label>
-            <Input
-              id="dateTo"
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Categoría</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
+              <Label>Producto</Label>
+            <Select value={plantId} onValueChange={setPlantId}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
+                {plants.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          {showPlantFilter && (
-            <div className="space-y-1.5">
-              <Label>Planta</Label>
-              <Select value={plantId} onValueChange={setPlantId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {plants.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-1 xl:col-span-2">
-            <Button
-              onClick={applyFilters}
-              className="flex-1 bg-emerald-700 hover:bg-emerald-800"
-            >
-              Filtrar
-            </Button>
-            <Button variant="outline" onClick={clearFilters}>
-              Limpiar
-            </Button>
-          </div>
+        )}
+        <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+          <Button onClick={applyFilters} className="flex-1">
+            Filtrar
+          </Button>
+          <Button variant="outline" onClick={clearFilters}>
+            Limpiar
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -35,7 +35,7 @@ export function CostosClient({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Costos"
         description="Registro y consulta de egresos por categoría y período"
@@ -45,7 +45,7 @@ export function CostosClient({
         <DateFilters categories={categories} />
       </Suspense>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         {canWrite && (
           <div ref={formSectionRef} className="min-w-0">
             <CostForm

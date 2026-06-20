@@ -3,8 +3,8 @@ import { z } from "zod";
 import { entityIdSchema, optionalEntityIdSchema } from "./ids";
 
 export const incomeLineSchema = z.object({
-  plantId: z.string().min(1, "Seleccione una planta"),
-  quantity: z.number().int().positive("La cantidad debe ser mayor a 0"),
+  plantId: z.string().min(1, "Seleccione un producto"),
+  quantity: z.number().positive("La cantidad debe ser mayor a 0"),
   unitPrice: z.number().positive().nullable().optional(),
   description: z.string().max(500).optional().nullable(),
 });

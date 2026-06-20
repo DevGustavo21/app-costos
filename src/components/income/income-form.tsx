@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useEffect, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Category, Currency, IncomeEntryWithRelations, Plant, MeasurementUnit } from "@/types/database";
-import { getMeasurementUnitLabel, getMeasurementUnitShort, usesVolumePricing } from "@/lib/measurement-unit";
+import { Category, Currency, IncomeEntryWithRelations, Plant } from "@/types/database";
+import { getMeasurementUnitLabel, getMeasurementUnitShort } from "@/lib/measurement-unit";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,31 +35,32 @@ import {
   type IncomeEntryFormValues,
 } from "@/lib/validations/income";
 import { createIncomeEntry, updateIncomeEntry } from "@/lib/actions/income";
-import { computeAmountUsd, formatNio, formatUsd } from "@/lib/currency";
+import { formatNio } from "@/lib/currency";
+import { parseLocalDate, normalizePickerDate } from "@/lib/db/helpers";
+
+function getEmptyIncomeValues(): IncomeEntryFormValues {
+  return {
+    date: normalizePickerDate(new Date()),
+    categoryId: "",
+    description: "",
+    currency: Currency.USD,
+    amount: 0,
+    exchangeRate: null,
+    isPlantCategory: false,
+    isVolumeSale: false,
+    saleQuantity: undefined,
+    unitPrice: undefined,
+    lines: [],
+  };
+}
 
 type IncomeFormProps = {
   businessUnitId: string;
   categories: Category[];
   plants: Plant[];
   defaultExchangeRate: number;
-  measurementUnit: MeasurementUnit;
-  basePricePerUnit: number | null;
   editEntry?: IncomeEntryWithRelations | null;
   onEditComplete?: () => void;
-};
-
-const emptyIncomeValues: IncomeEntryFormValues = {
-  date: new Date(),
-  categoryId: "",
-  description: "",
-  currency: Currency.USD,
-  amount: 0,
-  exchangeRate: null,
-  isPlantCategory: false,
-  isVolumeSale: false,
-  saleQuantity: undefined,
-  unitPrice: undefined,
-  lines: [],
 };
 
 export function IncomeForm({
@@ -67,53 +68,31 @@ export function IncomeForm({
   categories,
   plants,
   defaultExchangeRate,
-  measurementUnit,
-  basePricePerUnit,
   editEntry,
   onEditComplete,
 }: IncomeFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const unitLabel = getMeasurementUnitLabel(measurementUnit);
-  const unitShort = getMeasurementUnitShort(measurementUnit);
-
   const form = useForm<IncomeEntryFormValues>({
     resolver: zodResolver(incomeEntrySchema),
-    defaultValues: emptyIncomeValues,
+    defaultValues: getEmptyIncomeValues(),
   });
 
   useEffect(() => {
-    if (!editEntry) {
-      const volumeSale = usesVolumePricing(measurementUnit);
-      form.reset({
-        ...emptyIncomeValues,
-        date: new Date(),
-        unitPrice: basePricePerUnit ?? undefined,
-        isVolumeSale: volumeSale,
-        currency: volumeSale ? Currency.NIO : Currency.USD,
-        exchangeRate: volumeSale ? defaultExchangeRate : null,
-      });
-      return;
-    }
-
-    const volumeSale =
-      usesVolumePricing(measurementUnit) &&
-      !(editEntry.category?.isPlantCategory ?? false);
+    if (!editEntry) return;
 
     form.reset({
-      date: new Date(editEntry.date),
+      date: parseLocalDate(editEntry.date),
       categoryId: editEntry.categoryId,
       description: editEntry.description,
-      currency: volumeSale ? Currency.NIO : editEntry.currency,
+      currency: editEntry.currency,
       amount: editEntry.amount,
-      exchangeRate: volumeSale
-        ? (editEntry.exchangeRate ?? defaultExchangeRate)
-        : editEntry.exchangeRate,
+      exchangeRate: editEntry.exchangeRate,
       isPlantCategory: editEntry.category?.isPlantCategory ?? false,
-      isVolumeSale: volumeSale,
+      isVolumeSale: false,
       saleQuantity: editEntry.saleQuantity ?? undefined,
-      unitPrice: editEntry.unitPrice ?? basePricePerUnit ?? undefined,
+      unitPrice: editEntry.unitPrice ?? undefined,
       lines: (editEntry.lines ?? []).map((l) => ({
         plantId: l.plantId ?? "",
         quantity: l.quantity,
@@ -121,7 +100,7 @@ export function IncomeForm({
         description: l.description,
       })),
     });
-  }, [editEntry, form, basePricePerUnit, measurementUnit, defaultExchangeRate]);
+  }, [editEntry, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -129,63 +108,54 @@ export function IncomeForm({
   });
 
   const selectedCategoryId = form.watch("categoryId");
-  const isPlantCategory = form.watch("isPlantCategory");
-  const isVolumeSale =
-    usesVolumePricing(measurementUnit) && !isPlantCategory;
-  const saleQuantity = form.watch("saleQuantity") ?? 0;
-  const volumeUnitPrice = form.watch("unitPrice") ?? basePricePerUnit ?? 0;
   const lines = form.watch("lines");
 
-  useEffect(() => {
+  const catalogProducts = useMemo(() => {
+    if (!selectedCategoryId) return [];
+    return plants.filter(
+      (p) => p.isActive && p.categoryId === selectedCategoryId
+    );
+  }, [plants, selectedCategoryId]);
+
+  const usesCatalog = useMemo(() => {
+    if (!selectedCategoryId) return false;
     const cat = categories.find((c) => c.id === selectedCategoryId);
-    form.setValue("isPlantCategory", cat?.isPlantCategory ?? false);
-    form.setValue("isVolumeSale", usesVolumePricing(measurementUnit) && !cat?.isPlantCategory);
-    if (cat?.isPlantCategory && fields.length === 0) {
+    return (cat?.isPlantCategory ?? false) || catalogProducts.length > 0;
+  }, [selectedCategoryId, categories, catalogProducts.length]);
+
+  useEffect(() => {
+    form.setValue("isPlantCategory", usesCatalog);
+    form.setValue("isVolumeSale", false);
+    if (usesCatalog && fields.length === 0) {
       append({ plantId: "", quantity: 1, unitPrice: null, description: "" });
     }
-  }, [selectedCategoryId, categories, form, fields.length, append, measurementUnit]);
+  }, [selectedCategoryId, usesCatalog, form, fields.length, append]);
+
+  const calculatedTotal = usesCatalog
+    ? (lines ?? []).reduce((sum, line) => {
+        const product = catalogProducts.find((p) => p.id === line.plantId);
+        const price = line.unitPrice ?? product?.basePrice ?? 0;
+        return sum + (line.quantity ?? 0) * price;
+      }, 0)
+    : form.watch("amount") ?? 0;
 
   useEffect(() => {
-    if (isVolumeSale && basePricePerUnit && !form.getValues("unitPrice")) {
-      form.setValue("unitPrice", basePricePerUnit);
-    }
-  }, [isVolumeSale, basePricePerUnit, form]);
-
-  useEffect(() => {
-    if (isVolumeSale) {
+    if (usesCatalog) {
+      form.setValue("amount", calculatedTotal);
       form.setValue("currency", Currency.NIO);
       if (!form.getValues("exchangeRate")) {
         form.setValue("exchangeRate", defaultExchangeRate);
       }
     }
-  }, [isVolumeSale, defaultExchangeRate, form]);
-
-  const exchangeRate = form.watch("exchangeRate") ?? defaultExchangeRate;
-
-  const calculatedTotal = isPlantCategory
-    ? (lines ?? []).reduce((sum, line) => {
-        const plant = plants.find((p) => p.id === line.plantId);
-        const price =
-          line.unitPrice ?? plant?.basePrice ?? 0;
-        return sum + (line.quantity ?? 0) * price;
-      }, 0)
-    : isVolumeSale
-      ? saleQuantity * volumeUnitPrice
-      : form.watch("amount") ?? 0;
-
-  useEffect(() => {
-    if (isPlantCategory || isVolumeSale) {
-      form.setValue("amount", calculatedTotal);
-    }
-  }, [calculatedTotal, isPlantCategory, isVolumeSale, form]);
+  }, [calculatedTotal, usesCatalog, form, defaultExchangeRate]);
 
   const onSubmit = (values: IncomeEntryFormValues) => {
-    const payload: IncomeEntryFormValues = isVolumeSale
+    const payload: IncomeEntryFormValues = usesCatalog
       ? {
           ...values,
           currency: Currency.NIO,
           exchangeRate: values.exchangeRate ?? defaultExchangeRate,
-          isVolumeSale: true,
+          isVolumeSale: false,
         }
       : values;
 
@@ -198,15 +168,7 @@ export function IncomeForm({
         } else {
           await createIncomeEntry(businessUnitId, payload);
           toast.success("Ingreso registrado");
-          const volumeSale = usesVolumePricing(measurementUnit);
-          form.reset({
-            ...emptyIncomeValues,
-            date: new Date(),
-            unitPrice: basePricePerUnit ?? undefined,
-            isVolumeSale: volumeSale,
-            currency: volumeSale ? Currency.NIO : Currency.USD,
-            exchangeRate: volumeSale ? defaultExchangeRate : null,
-          });
+          form.reset(getEmptyIncomeValues());
         }
         router.refresh();
       } catch {
@@ -217,7 +179,7 @@ export function IncomeForm({
 
   return (
     <Card
-      className={editEntry ? "shadow-sm ring-2 ring-emerald-200" : "shadow-sm"}
+      className={editEntry ? "bg-emerald-50/50" : undefined}
     >
       <CardHeader>
         <CardTitle>{editEntry ? "Editar ingreso" : "Registrar ingreso"}</CardTitle>
@@ -231,7 +193,14 @@ export function IncomeForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fecha</FormLabel>
-                  <DatePickerField value={field.value} onChange={field.onChange} />
+                  <FormControl>
+                    <DatePickerField
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      disabled={isPending}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -253,10 +222,15 @@ export function IncomeForm({
                         <SelectValue placeholder="Seleccionar categoría" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
                       {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
+                        <SelectItem key={cat.id} value={cat.id} className="whitespace-normal">
                           {cat.name}
+                          {(cat.isPlantCategory ||
+                            plants.some(
+                              (p) => p.isActive && p.categoryId === cat.id
+                            )) &&
+                            " (catálogo)"}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -280,10 +254,10 @@ export function IncomeForm({
               )}
             />
 
-            {isPlantCategory && (
-              <div className="space-y-3 rounded-lg border p-4">
+            {usesCatalog && (
+              <div className="space-y-3 rounded-lg bg-muted/40 p-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Detalle de venta de plantas</h4>
+                  <h4 className="text-sm font-medium">Detalle de venta por catálogo</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -297,46 +271,65 @@ export function IncomeForm({
                   </Button>
                 </div>
 
-                {fields.map((field, index) => (
-                  <div key={field.id} className="space-y-2 rounded-md bg-muted/50 p-3">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name={`lines.${index}.plantId`}
-                        render={({ field: f }) => (
-                          <FormItem>
-                            <FormLabel>Planta</FormLabel>
-                            <Select onValueChange={f.onChange} value={f.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Seleccionar" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {plants.map((p) => (
-                                  <SelectItem key={p.id} value={p.id}>
-                                    {p.name} — {formatUsd(p.basePrice)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                {catalogProducts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No hay productos en el catálogo para esta categoría. Agréguelos en
+                    Catálogo de productos.
+                  </p>
+                ) : null}
 
+                {fields.map((field, index) => {
+                  const linePlantId = form.watch(`lines.${index}.plantId`);
+                  const lineProduct = catalogProducts.find((p) => p.id === linePlantId);
+                  const lineUnitLabel = lineProduct
+                    ? getMeasurementUnitLabel(lineProduct.measurementUnit)
+                    : "unidad";
+
+                  return (
+                  <div key={field.id} className="space-y-3 rounded-md border border-border/50 bg-background p-3">
+                    <FormField
+                      control={form.control}
+                      name={`lines.${index}.plantId`}
+                      render={({ field: f }) => (
+                        <FormItem className="min-w-0">
+                          <FormLabel>Producto</FormLabel>
+                          <Select onValueChange={f.onChange} value={f.value}>
+                            <FormControl>
+                              <SelectTrigger className="w-full min-w-0">
+                                <SelectValue placeholder="Seleccionar" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="max-w-[var(--radix-select-trigger-width)]">
+                              {catalogProducts.map((p) => (
+                                <SelectItem key={p.id} value={p.id} className="whitespace-normal">
+                                  {p.name} — {formatNio(p.basePrice)} /{" "}
+                                  {getMeasurementUnitShort(p.measurementUnit)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <FormField
                         control={form.control}
                         name={`lines.${index}.quantity`}
                         render={({ field: f }) => (
-                          <FormItem>
-                            <FormLabel>Cantidad ({unitLabel})</FormLabel>
+                          <FormItem className="min-w-0">
+                            <FormLabel>Cantidad ({lineUnitLabel})</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
-                                min={1}
+                                min={0}
+                                step="0.001"
+                                className="w-full min-w-0"
                                 {...f}
-                                onChange={(e) => f.onChange(parseInt(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  f.onChange(parseFloat(e.target.value) || 0)
+                                }
                               />
                             </FormControl>
                             <FormMessage />
@@ -348,13 +341,14 @@ export function IncomeForm({
                         control={form.control}
                         name={`lines.${index}.unitPrice`}
                         render={({ field: f }) => (
-                          <FormItem>
-                            <FormLabel>Precio unitario (opcional)</FormLabel>
+                          <FormItem className="min-w-0">
+                            <FormLabel>Precio unitario C$ (opcional)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.01"
-                                placeholder="Precio base del catálogo"
+                                placeholder="Precio del catálogo"
+                                className="w-full min-w-0"
                                 value={f.value ?? ""}
                                 onChange={(e) =>
                                   f.onChange(
@@ -381,81 +375,12 @@ export function IncomeForm({
                       </Button>
                     )}
                   </div>
-                ))}
+                  );
+                })}
 
                 <Separator />
                 <p className="text-sm font-medium">
-                  Total calculado: {formatUsd(calculatedTotal)}
-                </p>
-              </div>
-            )}
-
-            {isVolumeSale && (
-              <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
-                <h4 className="text-sm font-medium">Venta por volumen</h4>
-                <FormField
-                  control={form.control}
-                  name="unitPrice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Precio por {unitShort} (C$)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          disabled={isPending}
-                          value={field.value ?? ""}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value ? parseFloat(e.target.value) : undefined
-                            )
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="saleQuantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cantidad ({unitLabel})</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.001"
-                          min={0}
-                          disabled={isPending}
-                          placeholder="Ej. 50"
-                          value={field.value ?? ""}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value ? parseFloat(e.target.value) : undefined
-                            )
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <p className="text-sm font-medium text-emerald-800">
                   Total calculado: {formatNio(calculatedTotal)}
-                  {saleQuantity > 0 && volumeUnitPrice > 0 && (
-                    <span className="ml-1 font-normal text-muted-foreground">
-                      ({saleQuantity} {unitShort} × {formatNio(volumeUnitPrice)})
-                    </span>
-                  )}
-                  {calculatedTotal > 0 && (
-                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                      ≈ {formatUsd(computeAmountUsd(calculatedTotal, Currency.NIO, exchangeRate))} USD
-                    </span>
-                  )}
                 </p>
               </div>
             )}
@@ -463,10 +388,10 @@ export function IncomeForm({
             <CurrencyFields
               form={form}
               defaultExchangeRate={defaultExchangeRate}
-              fixedCurrency={isVolumeSale ? Currency.NIO : undefined}
+              fixedCurrency={usesCatalog ? Currency.NIO : undefined}
             />
 
-            {!isPlantCategory && !isVolumeSale && (
+            {!usesCatalog && (
               <FormField
                 control={form.control}
                 name="amount"

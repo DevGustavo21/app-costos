@@ -16,8 +16,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { formatAmount, formatCurrencyLabel, formatUsd, resolveIncomeDisplay } from "@/lib/currency";
+import { formatCurrencyLabel, formatNio, formatUsd, resolveIncomeDisplay } from "@/lib/currency";
 import { MonthlyAccordionTable } from "@/components/shared/monthly-accordion-table";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { deleteIncomeEntry } from "@/lib/actions/income";
 import type { MonthlyGroup } from "@/lib/queries/costs";
 
@@ -58,7 +59,7 @@ function ExpandableDetail({ entry }: { entry: IncomeEntryWithRelations }) {
           {entry.lines.map((line) => (
             <li key={line.id}>
               {line.plant?.name ?? "—"} × {line.quantity} ={" "}
-              {formatUsd(line.subtotal)}
+              {formatNio(line.subtotal)}
             </li>
           ))}
         </ul>
@@ -79,14 +80,17 @@ export function IncomeMonthlyTable({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const handleDelete = (id: string) => {
-    if (!confirm("¿Eliminar este registro de ingreso?")) return;
+  const handleDelete = () => {
+    if (!confirmDeleteId) return;
+    const id = confirmDeleteId;
     setDeletingId(id);
     startTransition(async () => {
       try {
         await deleteIncomeEntry(businessUnitId, id);
         toast.success("Ingreso eliminado");
+        setConfirmDeleteId(null);
         router.refresh();
       } catch {
         toast.error("Error al eliminar");
@@ -103,7 +107,7 @@ export function IncomeMonthlyTable({
           <TableHead>Fecha</TableHead>
           <TableHead>Categoría</TableHead>
           <TableHead>Descripción</TableHead>
-          <TableHead className="text-right">Monto</TableHead>
+          <TableHead className="text-right">Monto C$</TableHead>
           <TableHead>Moneda</TableHead>
           <TableHead className="text-right">Monto USD</TableHead>
           <TableHead>Detalle</TableHead>
@@ -127,12 +131,12 @@ export function IncomeMonthlyTable({
               {entry.description ?? "—"}
               {entry.saleQuantity != null && entry.unitPrice != null && (
                 <span className="mt-0.5 block text-xs text-muted-foreground">
-                  {entry.saleQuantity} × {formatAmount(entry.unitPrice, display.currency)}
+                  {entry.saleQuantity} × {formatNio(entry.unitPrice)}
                 </span>
               )}
             </TableCell>
             <TableCell className="text-right">
-              {formatAmount(entry.amount, display.currency)}
+              {formatNio(display.amountNio)}
             </TableCell>
             <TableCell>{formatCurrencyLabel(display.currency)}</TableCell>
             <TableCell className="text-right">
@@ -155,7 +159,7 @@ export function IncomeMonthlyTable({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(entry.id)}
+                    onClick={() => setConfirmDeleteId(entry.id)}
                     disabled={isPending && deletingId === entry.id}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -171,11 +175,25 @@ export function IncomeMonthlyTable({
   );
 
   return (
-    <MonthlyAccordionTable
-      months={months}
-      defaultMonthKey={defaultMonthKey}
-      renderTable={renderTable}
-      emptyMessage="No hay ingresos registrados"
-    />
+    <>
+      <MonthlyAccordionTable
+        months={months}
+        defaultMonthKey={defaultMonthKey}
+        renderTable={renderTable}
+        emptyMessage="No hay ingresos registrados"
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteId != null}
+        onOpenChange={(open) => {
+          if (!open && !isPending) setConfirmDeleteId(null);
+        }}
+        title="¿Eliminar ingreso?"
+        description="Esta acción no se puede deshacer. El registro de ingreso se eliminará permanentemente."
+        confirmLabel="Eliminar"
+        onConfirm={handleDelete}
+        isPending={isPending && deletingId != null}
+      />
+    </>
   );
 }

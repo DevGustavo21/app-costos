@@ -30,6 +30,7 @@ import { CurrencyFields } from "@/components/shared/currency-fields";
 import { ReceiptUpload } from "@/components/shared/receipt-upload";
 import { costEntrySchema, type CostEntryFormValues } from "@/lib/validations/cost";
 import { createCostEntry, updateCostEntry } from "@/lib/actions/costs";
+import { normalizePickerDate, parseLocalDate } from "@/lib/db/helpers";
 
 type CostFormProps = {
   businessUnitId: string;
@@ -39,15 +40,17 @@ type CostFormProps = {
   onEditComplete?: () => void;
 };
 
-const emptyValues: CostEntryFormValues = {
-  date: new Date(),
-  categoryId: "",
-  description: "",
-  currency: Currency.USD,
-  amount: 0,
-  exchangeRate: null,
-  receiptUrl: null,
-};
+function getEmptyCostValues(): CostEntryFormValues {
+  return {
+    date: normalizePickerDate(new Date()),
+    categoryId: "",
+    description: "",
+    currency: Currency.USD,
+    amount: 0,
+    exchangeRate: null,
+    receiptUrl: null,
+  };
+}
 
 export function CostForm({
   businessUnitId,
@@ -61,17 +64,14 @@ export function CostForm({
 
   const form = useForm<CostEntryFormValues>({
     resolver: zodResolver(costEntrySchema),
-    defaultValues: emptyValues,
+    defaultValues: getEmptyCostValues(),
   });
 
   useEffect(() => {
-    if (!editEntry) {
-      form.reset({ ...emptyValues, date: new Date() });
-      return;
-    }
+    if (!editEntry) return;
 
     form.reset({
-      date: new Date(editEntry.date),
+      date: parseLocalDate(editEntry.date),
       categoryId: editEntry.categoryId,
       description: editEntry.description,
       currency: editEntry.currency,
@@ -91,10 +91,7 @@ export function CostForm({
         } else {
           await createCostEntry(businessUnitId, values);
           toast.success("Costo registrado");
-          form.reset({
-            ...emptyValues,
-            date: new Date(),
-          });
+          form.reset(getEmptyCostValues());
         }
         router.refresh();
       } catch (err) {
@@ -107,7 +104,7 @@ export function CostForm({
 
   return (
     <Card
-      className={editEntry ? "shadow-sm ring-2 ring-emerald-200" : "shadow-sm"}
+      className={editEntry ? "bg-emerald-50/50" : undefined}
     >
       <CardHeader>
         <CardTitle>{editEntry ? "Editar costo" : "Registrar costo"}</CardTitle>
@@ -121,11 +118,14 @@ export function CostForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fecha</FormLabel>
-                  <DatePickerField
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={isPending}
-                  />
+                  <FormControl>
+                    <DatePickerField
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      disabled={isPending}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

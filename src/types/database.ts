@@ -26,6 +26,7 @@ export const MeasurementUnit = {
   POUND: "libra",
   BOX: "caja",
   BAG: "bolsa",
+  LIVESTOCK_HEAD: "cabeza_ganado",
 } as const;
 export type MeasurementUnit =
   (typeof MeasurementUnit)[keyof typeof MeasurementUnit];
@@ -80,12 +81,15 @@ export type Category = {
 export type Plant = {
   id: string;
   businessUnitId: string;
+  categoryId: string | null;
   name: string;
   description: string | null;
+  measurementUnit: MeasurementUnit;
   basePrice: number;
   stock: number | null;
   isActive: boolean;
   createdAt: string;
+  category?: Category | null;
 };
 
 export type CostEntry = {

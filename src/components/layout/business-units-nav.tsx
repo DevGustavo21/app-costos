@@ -29,6 +29,7 @@ export function BusinessUnitsNav({
         <NavLink
           key={unit.id}
           href={`/${unit.slug}`}
+          variant="context"
           onNavigate={onNavigate}
           icon={Building2}
         >

@@ -1,5 +1,4 @@
 -- Esquema completo para Supabase (ejecutar en SQL Editor)
--- Reemplaza Prisma migrate/push
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -17,7 +16,7 @@ CREATE TABLE IF NOT EXISTS business_units (
   name TEXT NOT NULL,
   description TEXT,
   measurement_unit TEXT NOT NULL DEFAULT 'unidad' CHECK (
-    measurement_unit IN ('unidad', 'litro', 'galon', 'kg', 'libra', 'caja', 'bolsa')
+    measurement_unit IN ('unidad', 'litro', 'galon', 'kg', 'libra', 'caja', 'bolsa', 'cabeza_ganado')
   ),
   base_price_per_unit NUMERIC(12, 2),
   base_currency TEXT NOT NULL DEFAULT 'NIO' CHECK (base_currency IN ('USD', 'NIO')),
@@ -47,14 +46,19 @@ CREATE INDEX IF NOT EXISTS idx_categories_bu_type ON categories(business_unit_id
 CREATE TABLE IF NOT EXISTS plants (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   business_unit_id TEXT NOT NULL REFERENCES business_units(id) ON DELETE CASCADE,
+  category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   description TEXT,
+  measurement_unit TEXT NOT NULL DEFAULT 'unidad' CHECK (
+    measurement_unit IN ('unidad', 'litro', 'galon', 'kg', 'libra', 'caja', 'bolsa', 'cabeza_ganado')
+  ),
   base_price NUMERIC(12, 2) NOT NULL,
-  stock INTEGER,
+  stock NUMERIC(12, 3),
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_plants_bu ON plants(business_unit_id);
+CREATE INDEX IF NOT EXISTS idx_plants_category ON plants(category_id);
 
 CREATE TABLE IF NOT EXISTS cost_entries (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -98,7 +102,7 @@ CREATE TABLE IF NOT EXISTS income_lines (
   income_entry_id TEXT NOT NULL REFERENCES income_entries(id) ON DELETE CASCADE,
   plant_id TEXT REFERENCES plants(id),
   description TEXT,
-  quantity INTEGER NOT NULL,
+  quantity NUMERIC(12, 3) NOT NULL,
   unit_price NUMERIC(12, 2) NOT NULL,
   subtotal NUMERIC(12, 2) NOT NULL
 );

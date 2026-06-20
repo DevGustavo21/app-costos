@@ -40,6 +40,11 @@ export const MEASUREMENT_UNIT_OPTIONS: {
     label: "Bolsa",
     description: "Productos empacados por bolsa",
   },
+  {
+    value: MeasurementUnit.LIVESTOCK_HEAD,
+    label: "Cabeza de ganado",
+    description: "Ganado contabilizado por cabeza",
+  },
 ];
 
 export function getMeasurementUnitLabel(unit: MeasurementUnit): string {
@@ -55,6 +60,7 @@ export function getMeasurementUnitShort(unit: MeasurementUnit): string {
     libra: "lb",
     caja: "caja",
     bolsa: "bolsa",
+    cabeza_ganado: "cab.",
   };
   return shorts[unit] ?? unit;
 }
@@ -70,6 +76,8 @@ export function getBasePricePerUnitLabel(unit: MeasurementUnit): string {
       return "Precio base por litro (C$)";
     case MeasurementUnit.GALLON:
       return "Precio base por galón (C$)";
+    case MeasurementUnit.LIVESTOCK_HEAD:
+      return "Precio base por cabeza (C$)";
     default:
       return "Precio base por unidad (C$)";
   }

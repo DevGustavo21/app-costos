@@ -318,31 +318,63 @@ export async function getBudgetExecution(
   if (e2) throw e2;
 
   const budgetLines = (lines ?? []).map(mapBudgetLine);
+  if (budgetLines.length === 0) return [];
 
-  const results = await Promise.all(
-    budgetLines.map(async (line) => {
-      const table = line.type === CategoryType.COST ? "cost_entries" : "income_entries";
-      const { data: rows } = await db()
-        .from(table)
-        .select("amount_usd")
-        .eq("business_unit_id", businessUnitId)
-        .eq("category_id", line.categoryId)
-        .gte("date", dateOnly(period.start))
-        .lte("date", dateOnly(period.end));
+  const dateFrom = dateOnly(period.start);
+  const dateTo = dateOnly(period.end);
 
-      const actual = sumAmountUsd(rows ?? []);
-      const planned = line.plannedAmountUsd;
+  const costCategoryIds = budgetLines
+    .filter((line) => line.type === CategoryType.COST)
+    .map((line) => line.categoryId);
+  const incomeCategoryIds = budgetLines
+    .filter((line) => line.type === CategoryType.INCOME)
+    .map((line) => line.categoryId);
 
-      return {
-        categoryId: line.categoryId,
-        categoryName: line.category?.name ?? "",
-        type: line.type,
-        planned,
-        actual,
-        executionPct: planned > 0 ? (actual / planned) * 100 : 0,
-      };
-    })
-  );
+  const [costRes, incomeRes] = await Promise.all([
+    costCategoryIds.length > 0
+      ? db()
+          .from("cost_entries")
+          .select("category_id, amount_usd")
+          .eq("business_unit_id", businessUnitId)
+          .in("category_id", costCategoryIds)
+          .gte("date", dateFrom)
+          .lte("date", dateTo)
+      : Promise.resolve({ data: [], error: null }),
+    incomeCategoryIds.length > 0
+      ? db()
+          .from("income_entries")
+          .select("category_id, amount_usd")
+          .eq("business_unit_id", businessUnitId)
+          .in("category_id", incomeCategoryIds)
+          .gte("date", dateFrom)
+          .lte("date", dateTo)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
 
-  return results;
+  if (costRes.error) throw costRes.error;
+  if (incomeRes.error) throw incomeRes.error;
+
+  const actualByCategory = new Map<string, number>();
+  for (const row of costRes.data ?? []) {
+    const id = row.category_id as string;
+    actualByCategory.set(id, (actualByCategory.get(id) ?? 0) + Number(row.amount_usd));
+  }
+  for (const row of incomeRes.data ?? []) {
+    const id = row.category_id as string;
+    actualByCategory.set(id, (actualByCategory.get(id) ?? 0) + Number(row.amount_usd));
+  }
+
+  return budgetLines.map((line) => {
+    const actual = actualByCategory.get(line.categoryId) ?? 0;
+    const planned = line.plannedAmountUsd;
+
+    return {
+      categoryId: line.categoryId,
+      categoryName: line.category?.name ?? "",
+      type: line.type,
+      planned,
+      actual,
+      executionPct: planned > 0 ? (actual / planned) * 100 : 0,
+    };
+  });
 }
