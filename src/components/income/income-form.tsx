@@ -54,6 +54,57 @@ function getEmptyIncomeValues(): IncomeEntryFormValues {
   };
 }
 
+function isCatalogCategory(
+  categoryId: string,
+  categories: Category[],
+  plants: Plant[],
+  lineCount: number
+) {
+  const category = categories.find((c) => c.id === categoryId);
+  return (
+    (category?.isPlantCategory ?? false) ||
+    lineCount > 0 ||
+    plants.some((p) => p.categoryId === categoryId)
+  );
+}
+
+function buildIncomeFormValues(
+  editEntry: IncomeEntryWithRelations | null | undefined,
+  categories: Category[],
+  plants: Plant[],
+  defaultExchangeRate: number
+): IncomeEntryFormValues {
+  if (!editEntry) return getEmptyIncomeValues();
+
+  const lineValues = (editEntry.lines ?? []).map((l) => ({
+    plantId: l.plantId ?? "",
+    quantity: l.quantity,
+    unitPrice: l.unitPrice,
+    description: l.description,
+  }));
+
+  const isCatalog = isCatalogCategory(
+    editEntry.categoryId,
+    categories,
+    plants,
+    lineValues.length
+  );
+
+  return {
+    date: parseLocalDate(editEntry.date),
+    categoryId: editEntry.categoryId,
+    description: editEntry.description ?? "",
+    currency: isCatalog ? Currency.NIO : editEntry.currency,
+    amount: editEntry.amount,
+    exchangeRate: editEntry.exchangeRate ?? defaultExchangeRate,
+    isPlantCategory: isCatalog,
+    isVolumeSale: false,
+    saleQuantity: editEntry.saleQuantity ?? undefined,
+    unitPrice: editEntry.unitPrice ?? undefined,
+    lines: lineValues,
+  };
+}
+
 type IncomeFormProps = {
   businessUnitId: string;
   categories: Category[];
@@ -74,33 +125,15 @@ export function IncomeForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  const initialValues = useMemo(
+    () => buildIncomeFormValues(editEntry, categories, plants, defaultExchangeRate),
+    [editEntry, categories, plants, defaultExchangeRate]
+  );
+
   const form = useForm<IncomeEntryFormValues>({
     resolver: zodResolver(incomeEntrySchema),
-    defaultValues: getEmptyIncomeValues(),
+    defaultValues: initialValues,
   });
-
-  useEffect(() => {
-    if (!editEntry) return;
-
-    form.reset({
-      date: parseLocalDate(editEntry.date),
-      categoryId: editEntry.categoryId,
-      description: editEntry.description,
-      currency: editEntry.currency,
-      amount: editEntry.amount,
-      exchangeRate: editEntry.exchangeRate,
-      isPlantCategory: editEntry.category?.isPlantCategory ?? false,
-      isVolumeSale: false,
-      saleQuantity: editEntry.saleQuantity ?? undefined,
-      unitPrice: editEntry.unitPrice ?? undefined,
-      lines: (editEntry.lines ?? []).map((l) => ({
-        plantId: l.plantId ?? "",
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        description: l.description,
-      })),
-    });
-  }, [editEntry, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -112,10 +145,29 @@ export function IncomeForm({
 
   const catalogProducts = useMemo(() => {
     if (!selectedCategoryId) return [];
-    return plants.filter(
-      (p) => p.isActive && p.categoryId === selectedCategoryId
-    );
-  }, [plants, selectedCategoryId]);
+
+    const byId = new Map<string, Plant>();
+    for (const plant of plants) {
+      if (plant.categoryId === selectedCategoryId) {
+        byId.set(plant.id, plant);
+      }
+    }
+
+    for (const line of editEntry?.lines ?? []) {
+      if (line.plantId && line.plant?.categoryId === selectedCategoryId) {
+        byId.set(line.plantId, line.plant);
+      }
+    }
+
+    for (const line of lines ?? []) {
+      const plant = plants.find((p) => p.id === line.plantId);
+      if (plant && plant.categoryId === selectedCategoryId) {
+        byId.set(plant.id, plant);
+      }
+    }
+
+    return Array.from(byId.values());
+  }, [plants, selectedCategoryId, editEntry?.lines, lines]);
 
   const usesCatalog = useMemo(() => {
     if (!selectedCategoryId) return false;
@@ -124,12 +176,14 @@ export function IncomeForm({
   }, [selectedCategoryId, categories, catalogProducts.length]);
 
   useEffect(() => {
+    if (editEntry) return;
+
     form.setValue("isPlantCategory", usesCatalog);
     form.setValue("isVolumeSale", false);
     if (usesCatalog && fields.length === 0) {
       append({ plantId: "", quantity: 1, unitPrice: null, description: "" });
     }
-  }, [selectedCategoryId, usesCatalog, form, fields.length, append]);
+  }, [selectedCategoryId, usesCatalog, editEntry, form, fields.length, append]);
 
   const calculatedTotal = usesCatalog
     ? (lines ?? []).reduce((sum, line) => {
@@ -213,8 +267,9 @@ export function IncomeForm({
                 <FormItem>
                   <FormLabel>Categoría</FormLabel>
                   <Select
+                    key={field.value || "empty-category"}
                     onValueChange={field.onChange}
-                    value={field.value || undefined}
+                    value={field.value}
                     disabled={isPending}
                   >
                     <FormControl>
@@ -293,7 +348,10 @@ export function IncomeForm({
                       render={({ field: f }) => (
                         <FormItem className="min-w-0">
                           <FormLabel>Producto</FormLabel>
-                          <Select onValueChange={f.onChange} value={f.value}>
+                          <Select
+                            onValueChange={f.onChange}
+                            value={f.value || undefined}
+                          >
                             <FormControl>
                               <SelectTrigger className="w-full min-w-0">
                                 <SelectValue placeholder="Seleccionar" />

@@ -59,8 +59,8 @@ export function MonthlyAccordionTable<T>({
                 </span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="pb-4">
-              {renderTable(month.entries)}
+            <AccordionContent className="pb-2">
+              <div className="overflow-x-auto">{renderTable(month.entries)}</div>
             </AccordionContent>
           </AccordionItem>
         ))}

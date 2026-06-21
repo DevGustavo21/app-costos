@@ -11,6 +11,7 @@ const ROUTE_TITLES: Record<string, string> = {
 
 export function getPageTitle(pathname: string): string {
   if (pathname === "/") return "Panel principal";
+  if (pathname === "/unidades/nueva") return "Nueva unidad de negocio";
 
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 1) return "Estadísticas";

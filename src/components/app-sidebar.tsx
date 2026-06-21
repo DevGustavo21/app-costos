@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   Package,
+  Plus,
   Receipt,
   TrendingDown,
   TrendingUp,
@@ -47,43 +48,63 @@ export type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   businessUnits?: BusinessUnitNav[];
 };
 
-function NavItemLink({
-  href,
-  label,
-  icon: Icon,
-  exact,
-  highlight = "page",
-}: {
+type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
-  highlight?: "page" | "context";
-}) {
-  const pathname = usePathname();
-  const active = exact
-    ? pathname === href
-    : pathname === href || pathname.startsWith(`${href}/`);
+};
 
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        isActive={highlight === "page" && active}
-        tooltip={label}
-        className={cn(
-          highlight === "context" &&
-            active &&
-            "bg-sidebar-accent/40 font-normal text-sidebar-foreground ring-1 ring-sidebar-border data-[active=true]:font-normal"
-        )}
-      >
-        <Link href={href}>
-          <Icon />
-          <span>{label}</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
+function isNavHrefActive(pathname: string, href: string, exact?: boolean) {
+  if (exact || href === "/") {
+    return pathname === href;
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function getUnitNavItems(slug: string) {
+  return {
+    stats: {
+      href: `/${slug}`,
+      label: "Estadísticas",
+      icon: LayoutDashboard,
+      exact: true,
+    } satisfies NavItem,
+    income: [
+      {
+        href: `/${slug}/ingresos`,
+        label: "Registro de ingresos",
+        icon: TrendingUp,
+      },
+      {
+        href: `/${slug}/configuracion/categorias-ingresos`,
+        label: "Categorías de ingresos",
+        icon: CircleDollarSign,
+      },
+      {
+        href: `/${slug}/configuracion/productos`,
+        label: "Catálogo de productos",
+        icon: Package,
+      },
+    ] satisfies NavItem[],
+    costs: [
+      {
+        href: `/${slug}/costos`,
+        label: "Registro de costos",
+        icon: TrendingDown,
+      },
+      {
+        href: `/${slug}/configuracion/categorias-costos`,
+        label: "Categorías de costos",
+        icon: Receipt,
+      },
+    ] satisfies NavItem[],
+    settings: {
+      href: `/${slug}/configuracion/unidad`,
+      label: "Unidad de negocio",
+      icon: Building2,
+    } satisfies NavItem,
+  };
 }
 
 function NavCollapsibleSection({
@@ -93,11 +114,11 @@ function NavCollapsibleSection({
 }: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[];
+  items: NavItem[];
 }) {
   const pathname = usePathname();
-  const isSectionActive = items.some(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+  const isSectionActive = items.some((item) =>
+    isNavHrefActive(pathname, item.href, item.exact)
   );
 
   return (
@@ -121,8 +142,7 @@ function NavCollapsibleSection({
           <SidebarMenuSub>
             {items.map((item) => {
               const ItemIcon = item.icon;
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = isNavHrefActive(pathname, item.href, item.exact);
 
               return (
                 <SidebarMenuSubItem key={item.href}>
@@ -142,6 +162,143 @@ function NavCollapsibleSection({
   );
 }
 
+function NavNestedCollapsible({
+  label,
+  icon: Icon,
+  items,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: NavItem[];
+}) {
+  const pathname = usePathname();
+  const isSectionActive = items.some((item) =>
+    isNavHrefActive(pathname, item.href, item.exact)
+  );
+
+  return (
+    <Collapsible defaultOpen={isSectionActive} className="group/nested">
+      <SidebarMenuSubItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuSubButton
+            isActive={isSectionActive}
+            className={cn(
+              isSectionActive && "font-medium text-sidebar-foreground"
+            )}
+          >
+            <Icon />
+            <span>{label}</span>
+            <ChevronRight className="ml-auto size-3.5 transition-transform duration-200 group-data-[state=open]/nested:rotate-90" />
+          </SidebarMenuSubButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub className="mr-0 ml-3.5 border-l border-sidebar-border pl-2">
+            {items.map((item) => {
+              const ItemIcon = item.icon;
+              const active = isNavHrefActive(pathname, item.href, item.exact);
+
+              return (
+                <SidebarMenuSubItem key={item.href}>
+                  <SidebarMenuSubButton asChild isActive={active} size="sm">
+                    <Link href={item.href}>
+                      <ItemIcon />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              );
+            })}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuSubItem>
+    </Collapsible>
+  );
+}
+
+function BusinessUnitNavCollapsible({
+  unit,
+  forceOpen,
+}: {
+  unit: BusinessUnitNav;
+  forceOpen?: boolean;
+}) {
+  const pathname = usePathname();
+  const nav = getUnitNavItems(unit.slug);
+  const base = `/${unit.slug}`;
+  const isUnitActive = pathname === base || pathname.startsWith(`${base}/`);
+  const allItems: NavItem[] = [
+    nav.stats,
+    ...nav.income,
+    ...nav.costs,
+    nav.settings,
+  ];
+  const isSectionActive = allItems.some((item) =>
+    isNavHrefActive(pathname, item.href, item.exact)
+  );
+
+  return (
+    <Collapsible
+      defaultOpen={forceOpen ?? isUnitActive}
+      className="group/unit"
+    >
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton
+            tooltip={unit.name}
+            isActive={isSectionActive}
+            className={cn(
+              isSectionActive &&
+                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary"
+            )}
+          >
+            <Building2 />
+            <span>{unit.name}</span>
+            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/unit:rotate-90" />
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub className="mr-0">
+            <SidebarMenuSubItem>
+              <SidebarMenuSubButton
+                asChild
+                isActive={isNavHrefActive(pathname, nav.stats.href, nav.stats.exact)}
+              >
+                <Link href={nav.stats.href}>
+                  <nav.stats.icon />
+                  <span>{nav.stats.label}</span>
+                </Link>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+
+            <NavNestedCollapsible
+              label="Ingresos"
+              icon={TrendingUp}
+              items={nav.income}
+            />
+            <NavNestedCollapsible
+              label="Costos"
+              icon={TrendingDown}
+              items={nav.costs}
+            />
+
+            <SidebarMenuSubItem>
+              <SidebarMenuSubButton
+                asChild
+                isActive={isNavHrefActive(pathname, nav.settings.href)}
+              >
+                <Link href={nav.settings.href}>
+                  <nav.settings.icon />
+                  <span>{nav.settings.label}</span>
+                </Link>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
+
 export function AppSidebar({
   mode = "business",
   businessUnitSlug = "",
@@ -151,38 +308,6 @@ export function AppSidebar({
   businessUnits = [],
   ...props
 }: AppSidebarProps) {
-  const buSlug = businessUnitSlug;
-  const incomeItems = [
-    {
-      href: `/${buSlug}/ingresos`,
-      label: "Registro de ingresos",
-      icon: TrendingUp,
-    },
-    {
-      href: `/${buSlug}/configuracion/categorias-ingresos`,
-      label: "Categorías de ingresos",
-      icon: CircleDollarSign,
-    },
-    {
-      href: `/${buSlug}/configuracion/productos`,
-      label: "Catálogo de productos",
-      icon: Package,
-    },
-  ];
-
-  const costItems = [
-    {
-      href: `/${buSlug}/costos`,
-      label: "Registro de costos",
-      icon: TrendingDown,
-    },
-    {
-      href: `/${buSlug}/configuracion/categorias-costos`,
-      label: "Categorías de costos",
-      icon: Receipt,
-    },
-  ];
-
   const user = {
     name: userName ?? "Usuario",
     email: userEmail ?? "",
@@ -198,7 +323,7 @@ export function AppSidebar({
               size="lg"
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <Link href={mode === "org" ? "/" : `/${buSlug}`}>
+              <Link href={mode === "org" ? "/" : `/${businessUnitSlug}`}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <TrendingUpIcon className="size-4" />
                 </div>
@@ -219,7 +344,18 @@ export function AppSidebar({
           <SidebarGroupLabel>Organización</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <NavItemLink href="/" label="Panel principal" icon={LayoutGrid} exact />
+              <NavCollapsibleSection
+                label="Panel principal"
+                icon={LayoutGrid}
+                items={[
+                  { href: "/", label: "Resumen", icon: LayoutGrid, exact: true },
+                  {
+                    href: "/unidades/nueva",
+                    label: "Nueva unidad",
+                    icon: Plus,
+                  },
+                ]}
+              />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -230,47 +366,12 @@ export function AppSidebar({
             <SidebarGroupContent>
               <SidebarMenu>
                 {businessUnits.map((unit) => (
-                  <NavItemLink
+                  <BusinessUnitNavCollapsible
                     key={unit.id}
-                    href={`/${unit.slug}`}
-                    label={unit.name}
-                    icon={Building2}
-                    highlight="context"
+                    unit={unit}
+                    forceOpen={mode === "business" && unit.slug === businessUnitSlug}
                   />
                 ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {mode === "business" && buSlug && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Principal</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <NavItemLink
-                  href={`/${buSlug}`}
-                  label="Estadísticas"
-                  icon={LayoutDashboard}
-                  exact
-                  highlight="page"
-                />
-                <NavCollapsibleSection
-                  label="Ingresos"
-                  icon={TrendingUp}
-                  items={incomeItems}
-                />
-                <NavCollapsibleSection
-                  label="Costos"
-                  icon={TrendingDown}
-                  items={costItems}
-                />
-                <NavItemLink
-                  href={`/${buSlug}/configuracion/unidad`}
-                  label="Unidad de negocio"
-                  icon={Building2}
-                  highlight="page"
-                />
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

@@ -66,6 +66,7 @@ export async function createBusinessUnit(input: unknown) {
   });
 
   revalidatePath("/");
+  revalidatePath("/unidades/nueva");
   return { id, slug };
 }
 

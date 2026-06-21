@@ -29,6 +29,18 @@ export function IngresosClient({
   const [editEntry, setEditEntry] = useState<IncomeEntryWithRelations | null>(null);
   const formSectionRef = useRef<HTMLDivElement>(null);
 
+  const formPlants = useMemo(() => {
+    const byId = new Map(plants.filter((p) => p.isActive).map((p) => [p.id, p]));
+    if (editEntry?.lines) {
+      for (const line of editEntry.lines) {
+        if (line.plantId && line.plant) {
+          byId.set(line.plantId, line.plant);
+        }
+      }
+    }
+    return Array.from(byId.values());
+  }, [plants, editEntry]);
+
   const formCategories = useMemo(() => {
     const active = categories.filter((c) => c.isActive);
     if (!editEntry?.categoryId) return active;
@@ -36,9 +48,10 @@ export function IngresosClient({
     const hasCurrent = active.some((c) => c.id === editEntry.categoryId);
     if (hasCurrent) return active;
 
-    const current = categories.find((c) => c.id === editEntry.categoryId);
+    const current =
+      categories.find((c) => c.id === editEntry.categoryId) ?? editEntry.category;
     return current ? [...active, current] : active;
-  }, [categories, editEntry?.categoryId]);
+  }, [categories, editEntry?.categoryId, editEntry?.category]);
 
   const handleEdit = (entry: IncomeEntryWithRelations) => {
     setEditEntry(entry);
@@ -65,7 +78,7 @@ export function IngresosClient({
             key={editEntry?.id ?? "new"}
             businessUnitId={businessUnitId}
             categories={formCategories}
-            plants={plants.filter((p) => p.isActive)}
+            plants={formPlants}
             defaultExchangeRate={defaultExchangeRate}
             editEntry={editEntry}
             onEditComplete={() => setEditEntry(null)}

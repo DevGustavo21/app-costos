@@ -88,7 +88,11 @@ export function OrganizationOverview({ data }: OrganizationOverviewProps) {
         <CardContent className="space-y-2">
           {units.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Aún no tiene unidades. Cree la primera con el formulario.
+              Aún no tiene unidades.{" "}
+              <Link href="/unidades/nueva" className="font-medium text-primary underline-offset-4 hover:underline">
+                Cree la primera aquí
+              </Link>
+              .
             </p>
           ) : (
             units.map((unit) => (

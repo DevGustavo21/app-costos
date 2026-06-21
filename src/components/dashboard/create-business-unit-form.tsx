@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createBusinessUnit } from "@/lib/actions/business-units";
 import {
   businessUnitSchema,
@@ -51,12 +51,9 @@ export function CreateBusinessUnitForm() {
   };
 
   return (
-    <Card className="max-w-2xl">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-base">Nueva unidad de negocio</CardTitle>
-        <CardDescription>
-          Cree una unidad para gestionar ingresos, costos y configuración de forma independiente.
-        </CardDescription>
+        <CardTitle className="text-base">Datos de la unidad</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
