@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatUsd } from "@/lib/currency";
 import { chartColor } from "@/lib/chart-colors";
@@ -25,7 +25,6 @@ type PieChartCardProps = {
   height?: number;
   innerRadius?: number;
   outerRadius?: number;
-  showLegend?: boolean;
   activeIndex?: number | null;
   onSliceClick?: (index: number, item: PieChartDatum) => void;
   className?: string;
@@ -48,7 +47,6 @@ export function PieChartCard({
   height = 220,
   innerRadius = 48,
   outerRadius = 72,
-  showLegend = true,
   activeIndex: controlledActiveIndex,
   onSliceClick,
   className,
@@ -123,13 +121,6 @@ export function PieChartCard({
                 return [`${formatUsd(Number(value))} (${pct}%)`, item.name];
               }}
             />
-            {showLegend && (
-              <Legend
-                formatter={(value) => (
-                  <span className="text-sm text-foreground">{value}</span>
-                )}
-              />
-            )}
           </PieChart>
         </ResponsiveContainer>
 

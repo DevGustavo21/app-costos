@@ -126,6 +126,7 @@ function NavCollapsibleSection({
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton
+            tooltip={label}
             isActive={isSectionActive}
             className={cn(
               isSectionActive &&
@@ -245,6 +246,7 @@ function BusinessUnitNavCollapsible({
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton
+            tooltip={unit.name}
             isActive={isSectionActive}
             className={cn(
               isSectionActive &&
