@@ -203,6 +203,7 @@ function ChartTooltipContent({
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
             const indicatorColor = color ?? item.payload?.fill ?? item.color
+            const ItemIcon = itemConfig?.icon
 
             return (
               <div
@@ -216,8 +217,8 @@ function ChartTooltipContent({
                   formatter(item.value, item.name, item, index, item.payload)
                 ) : (
                   <>
-                    {itemConfig?.icon ? (
-                      <itemConfig.icon />
+                    {ItemIcon ? (
+                      <ItemIcon />
                     ) : (
                       !hideIndicator && (
                         <div
@@ -301,6 +302,7 @@ function ChartLegendContent({
         .map((item, index) => {
           const key = `${nameKey ?? item.dataKey ?? "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
+          const ItemIcon = itemConfig?.icon
 
           return (
             <div
@@ -309,8 +311,8 @@ function ChartLegendContent({
                 "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground"
               )}
             >
-              {itemConfig?.icon && !hideIcon ? (
-                <itemConfig.icon />
+              {ItemIcon && !hideIcon ? (
+                <ItemIcon />
               ) : (
                 <div
                   className="h-2 w-2 shrink-0 rounded-[2px]"

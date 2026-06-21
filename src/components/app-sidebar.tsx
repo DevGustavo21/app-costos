@@ -126,7 +126,6 @@ function NavCollapsibleSection({
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton
-            tooltip={label}
             isActive={isSectionActive}
             className={cn(
               isSectionActive &&
@@ -224,6 +223,8 @@ function BusinessUnitNavCollapsible({
 }) {
   const pathname = usePathname();
   const nav = getUnitNavItems(unit.slug);
+  const StatsIcon = nav.stats.icon;
+  const SettingsIcon = nav.settings.icon;
   const base = `/${unit.slug}`;
   const isUnitActive = pathname === base || pathname.startsWith(`${base}/`);
   const allItems: NavItem[] = [
@@ -244,7 +245,6 @@ function BusinessUnitNavCollapsible({
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton
-            tooltip={unit.name}
             isActive={isSectionActive}
             className={cn(
               isSectionActive &&
@@ -264,7 +264,7 @@ function BusinessUnitNavCollapsible({
                 isActive={isNavHrefActive(pathname, nav.stats.href, nav.stats.exact)}
               >
                 <Link href={nav.stats.href}>
-                  <nav.stats.icon />
+                  <StatsIcon />
                   <span>{nav.stats.label}</span>
                 </Link>
               </SidebarMenuSubButton>
@@ -287,7 +287,7 @@ function BusinessUnitNavCollapsible({
                 isActive={isNavHrefActive(pathname, nav.settings.href)}
               >
                 <Link href={nav.settings.href}>
-                  <nav.settings.icon />
+                  <SettingsIcon />
                   <span>{nav.settings.label}</span>
                 </Link>
               </SidebarMenuSubButton>

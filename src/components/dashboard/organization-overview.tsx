@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Building2, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,11 +55,6 @@ export function OrganizationOverview({ data }: OrganizationOverviewProps) {
                     ))}
                   </Pie>
                   <Tooltip formatter={(value) => formatUsd(Number(value))} />
-                  <Legend
-                    formatter={(value) => (
-                      <span className="text-sm text-foreground">{value}</span>
-                    )}
-                  />
                 </PieChart>
               </ResponsiveContainer>
               <div className="mt-3 flex flex-wrap gap-2">

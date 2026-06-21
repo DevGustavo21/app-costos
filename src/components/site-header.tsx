@@ -24,15 +24,15 @@ export function SiteHeader({ businessUnitName, businessUnitSlug }: SiteHeaderPro
   const pageTitle = getPageTitle(pathname);
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear md:h-(--header-height)">
-      <div className="flex w-full items-center gap-1 px-4 sm:px-6 lg:px-8 lg:gap-2">
-        <SidebarTrigger className="-ml-1" />
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear md:h-(--header-height)">
+      <div className="flex w-full items-center gap-1.5 px-4 sm:px-6 lg:px-8 lg:gap-2">
+        <SidebarTrigger className="-ml-1 size-9 [&_svg]:size-5 md:size-6 md:[&_svg]:size-3" />
         <Separator
           orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4"
+          className="mx-1.5 data-[orientation=vertical]:h-5 md:mx-2 md:data-[orientation=vertical]:h-4"
         />
         <Breadcrumb>
-          <BreadcrumbList>
+          <BreadcrumbList className="text-sm md:text-xs">
             <BreadcrumbItem className="hidden md:block">
               <BreadcrumbLink asChild>
                 <Link href="/">Multinegocios</Link>
@@ -50,7 +50,9 @@ export function SiteHeader({ businessUnitName, businessUnitSlug }: SiteHeaderPro
             )}
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
-              <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+              <BreadcrumbPage className="text-base font-medium md:text-xs md:font-normal">
+                {pageTitle}
+              </BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
