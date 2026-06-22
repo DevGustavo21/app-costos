@@ -2,7 +2,7 @@
 
 import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Category, CostEntryWithCategory, Currency } from "@/types/database";
 import { toast } from "sonner";
@@ -15,7 +15,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -25,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MoneyInput } from "@/components/shared/money-input";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { CurrencyFields } from "@/components/shared/currency-fields";
 import { ReceiptUpload } from "@/components/shared/receipt-upload";
@@ -40,13 +40,13 @@ type CostFormProps = {
   onEditComplete?: () => void;
 };
 
-function getEmptyCostValues(): CostEntryFormValues {
+function getEmptyCostValues(): DefaultValues<CostEntryFormValues> {
   return {
     date: normalizePickerDate(new Date()),
     categoryId: "",
     description: "",
     currency: Currency.USD,
-    amount: 0,
+    amount: undefined,
     exchangeRate: null,
     receiptUrl: null,
   };
@@ -183,11 +183,9 @@ export function CostForm({
                 <FormItem>
                   <FormLabel>Monto</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    <MoneyInput
+                      value={field.value}
+                      onChange={field.onChange}
                       disabled={isPending}
                     />
                   </FormControl>

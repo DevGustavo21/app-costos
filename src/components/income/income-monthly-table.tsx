@@ -1,21 +1,16 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
 import { IncomeEntryWithRelations } from "@/types/database";
 import { toast } from "sonner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
+import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
 import { formatNio, formatUsd, resolveIncomeDisplay } from "@/lib/currency";
 import { getMeasurementUnitShort } from "@/lib/measurement-unit";
 import { MonthlyAccordionTable } from "@/components/shared/monthly-accordion-table";
@@ -45,42 +40,59 @@ function IncomeEntryDetailPanel({
 }) {
   const display = resolveIncomeDisplay(entry, { volumePricing, defaultExchangeRate });
 
+  const lineColumns = useMemo<ColumnDef<IncomeEntryWithRelations["lines"][number]>[]>(
+    () => [
+      {
+        accessorKey: "product",
+        header: "Producto",
+        cell: ({ row }) => (
+          <span className="font-medium">
+            {row.original.plant?.name ?? row.original.description ?? "—"}
+          </span>
+        ),
+      },
+      {
+        id: "quantity",
+        header: () => <span className="block text-right">Cantidad</span>,
+        cell: ({ row }) => (
+          <span className="block text-right tabular-nums">
+            {row.original.quantity}
+            {row.original.plant?.measurementUnit
+              ? ` ${getMeasurementUnitShort(row.original.plant.measurementUnit)}`
+              : ""}
+          </span>
+        ),
+      },
+      {
+        id: "unitPrice",
+        header: () => <span className="block text-right">Precio unit.</span>,
+        cell: ({ row }) => (
+          <span className="block text-right tabular-nums">
+            {formatNio(row.original.unitPrice)}
+          </span>
+        ),
+      },
+      {
+        id: "subtotal",
+        header: () => <span className="block text-right">Subtotal</span>,
+        cell: ({ row }) => (
+          <span className="block text-right tabular-nums">
+            {formatNio(row.original.subtotal)}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
   return (
     <div className="space-y-3 border-t border-border/60 bg-muted/30 px-4 py-3">
       <p className="text-xs font-medium text-muted-foreground">Detalle de venta</p>
-      <div className="overflow-x-auto rounded-md border bg-background">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Producto</TableHead>
-              <TableHead className="text-right">Cantidad</TableHead>
-              <TableHead className="text-right">Precio unit.</TableHead>
-              <TableHead className="text-right">Subtotal</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entry.lines.map((line) => (
-              <TableRow key={line.id}>
-                <TableCell className="font-medium">
-                  {line.plant?.name ?? line.description ?? "—"}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {line.quantity}
-                  {line.plant?.measurementUnit
-                    ? ` ${getMeasurementUnitShort(line.plant.measurementUnit)}`
-                    : ""}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatNio(line.unitPrice)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatNio(line.subtotal)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={lineColumns}
+        data={entry.lines}
+        getRowId={(line) => line.id}
+      />
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         <span>
           <span className="text-muted-foreground">Total C$: </span>
@@ -110,8 +122,6 @@ export function IncomeMonthlyTable({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const columnCount = canWrite ? 7 : 6;
-
   const handleDelete = () => {
     if (!confirmDeleteId) return;
     const id = confirmDeleteId;
@@ -131,113 +141,160 @@ export function IncomeMonthlyTable({
     });
   };
 
-  const renderTable = (entries: IncomeEntryWithRelations[]) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-10" />
-          <TableHead>Fecha</TableHead>
-          <TableHead>Categoría</TableHead>
-          <TableHead>Descripción</TableHead>
-          <TableHead className="text-right">Monto C$</TableHead>
-          <TableHead className="text-right">Monto USD</TableHead>
-          {canWrite && <TableHead className="w-24">Acciones</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {entries.map((entry) => {
-          const display = resolveIncomeDisplay(entry, {
-            volumePricing,
-            defaultExchangeRate,
-          });
-          const hasDetail = entry.lines.length >= 2;
-          const isExpanded = expandedId === entry.id;
-
-          return (
-            <Fragment key={entry.id}>
-              <TableRow className={cn(isExpanded && "border-b-0")}>
-                <TableCell className="w-10 p-2 align-middle">
-                  {hasDetail ? (
+  const columns = useMemo<ColumnDef<IncomeEntryWithRelations>[]>(
+    () => [
+      {
+        id: "expand",
+          header: () => <span className="sr-only">Detalle</span>,
+          cell: ({ row }) => {
+            const hasDetail = row.original.lines.length >= 2;
+            const isExpanded = expandedId === row.original.id;
+            if (!hasDetail) {
+              return <span className="inline-block size-8" aria-hidden />;
+            }
+            return (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0"
+                aria-expanded={isExpanded}
+                aria-label={isExpanded ? "Ocultar detalle" : "Ver detalle de venta"}
+                onClick={() =>
+                  setExpandedId(isExpanded ? null : row.original.id)
+                }
+              >
+                {isExpanded ? (
+                  <ChevronDown className="size-4" />
+                ) : (
+                  <ChevronRight className="size-4" />
+                )}
+              </Button>
+            );
+          },
+        },
+        {
+          id: "date",
+          header: "Fecha",
+          cell: ({ row }) => (
+            <span className="whitespace-nowrap">
+              {format(new Date(row.original.date), "dd/MM/yyyy", { locale: es })}
+            </span>
+          ),
+        },
+        {
+          id: "category",
+          header: "Categoría",
+          cell: ({ row }) => row.original.category?.name,
+        },
+        {
+          id: "description",
+          header: "Descripción",
+          cell: ({ row }) => {
+            const entry = row.original;
+            return (
+              <div className="max-w-[200px] truncate">
+                {entry.description ?? "—"}
+                {entry.saleQuantity != null && entry.unitPrice != null && (
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {entry.saleQuantity} × {formatNio(entry.unitPrice)}
+                  </span>
+                )}
+              </div>
+            );
+          },
+        },
+        {
+          id: "amountNio",
+          accessorFn: (row) =>
+            resolveIncomeDisplay(row, {
+              volumePricing,
+              defaultExchangeRate,
+            }).amountNio,
+          header: ({ column }) => (
+            <DataTableColumnHeader
+              column={column}
+              title="Monto C$"
+              className="justify-end"
+            />
+          ),
+          cell: ({ row }) => {
+            const display = resolveIncomeDisplay(row.original, {
+              volumePricing,
+              defaultExchangeRate,
+            });
+            return (
+              <span className="block text-right tabular-nums">
+                {formatNio(display.amountNio)}
+              </span>
+            );
+          },
+        },
+        {
+          id: "amountUsd",
+          header: () => <span className="block text-right">Monto USD</span>,
+          cell: ({ row }) => {
+            const display = resolveIncomeDisplay(row.original, {
+              volumePricing,
+              defaultExchangeRate,
+            });
+            return (
+              <span className="block text-right tabular-nums">
+                {formatUsd(display.amountUsd)}
+              </span>
+            );
+          },
+        },
+        ...(canWrite
+          ? [
+              {
+                id: "actions",
+                header: "Acciones",
+                cell: ({ row }: { row: { original: IncomeEntryWithRelations } }) => (
+                  <div className="flex gap-1">
                     <Button
-                      type="button"
                       variant="ghost"
                       size="icon"
-                      className="size-8 shrink-0"
-                      aria-expanded={isExpanded}
-                      aria-label={isExpanded ? "Ocultar detalle" : "Ver detalle de venta"}
-                      onClick={() =>
-                        setExpandedId(isExpanded ? null : entry.id)
-                      }
+                      onClick={() => onEdit(row.original)}
+                      aria-label="Editar ingreso"
                     >
-                      {isExpanded ? (
-                        <ChevronDown className="size-4" />
-                      ) : (
-                        <ChevronRight className="size-4" />
-                      )}
+                      <Pencil className="h-4 w-4" />
                     </Button>
-                  ) : (
-                    <span className="inline-block size-8" aria-hidden />
-                  )}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {format(new Date(entry.date), "dd/MM/yyyy", { locale: es })}
-                </TableCell>
-                <TableCell>{entry.category?.name}</TableCell>
-                <TableCell className="max-w-[200px] truncate">
-                  {entry.description ?? "—"}
-                  {entry.saleQuantity != null && entry.unitPrice != null && (
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {entry.saleQuantity} × {formatNio(entry.unitPrice)}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatNio(display.amountNio)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatUsd(display.amountUsd)}
-                </TableCell>
-                {canWrite && (
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEdit(entry)}
-                        aria-label="Editar ingreso"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setConfirmDeleteId(entry.id)}
-                        disabled={isPending && deletingId === entry.id}
-                        aria-label="Eliminar ingreso"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                )}
-              </TableRow>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setConfirmDeleteId(row.original.id)}
+                      disabled={isPending && deletingId === row.original.id}
+                      aria-label="Eliminar ingreso"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ),
+              } satisfies ColumnDef<IncomeEntryWithRelations>,
+            ]
+          : []),
+    ],
+    [canWrite, defaultExchangeRate, deletingId, expandedId, isPending, onEdit, volumePricing]
+  );
 
-              {hasDetail && isExpanded && (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={columnCount} className="p-0">
-                    <IncomeEntryDetailPanel
-                      entry={entry}
-                      volumePricing={volumePricing}
-                      defaultExchangeRate={defaultExchangeRate}
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
-            </Fragment>
-          );
-        })}
-      </TableBody>
-    </Table>
+  const renderTable = (entries: IncomeEntryWithRelations[]) => (
+    <DataTable
+      columns={columns}
+      data={entries}
+      getRowId={(entry) => entry.id}
+      isSubRowOpen={(entry) => expandedId === entry.id && entry.lines.length >= 2}
+      getRowClassName={(entry) =>
+        cn(expandedId === entry.id && entry.lines.length >= 2 && "border-b-0")
+      }
+      renderSubRow={(row) => (
+        <IncomeEntryDetailPanel
+          entry={row.original}
+          volumePricing={volumePricing}
+          defaultExchangeRate={defaultExchangeRate}
+        />
+      )}
+    />
   );
 
   return (

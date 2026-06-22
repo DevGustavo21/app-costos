@@ -10,7 +10,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/shared/money-input";
 import {
   Select,
   SelectContent,
@@ -80,15 +80,10 @@ export function CurrencyFields({
             <FormItem>
               <FormLabel>Tasa de cambio (NIO → USD)</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  step="0.0001"
+                <MoneyInput
                   placeholder={defaultExchangeRate?.toString()}
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value ? parseFloat(e.target.value) : null)
-                  }
+                  value={field.value}
+                  onChange={field.onChange}
                 />
               </FormControl>
               <FormMessage />

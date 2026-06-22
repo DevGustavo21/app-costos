@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Category, Currency, IncomeEntryWithRelations, Plant } from "@/types/database";
 import { getMeasurementUnitLabel, getMeasurementUnitShort } from "@/lib/measurement-unit";
@@ -17,7 +17,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { MoneyInput } from "@/components/shared/money-input";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { CurrencyFields } from "@/components/shared/currency-fields";
 import {
@@ -37,14 +37,20 @@ import {
 import { createIncomeEntry, updateIncomeEntry } from "@/lib/actions/income";
 import { formatNio } from "@/lib/currency";
 import { parseLocalDate, normalizePickerDate } from "@/lib/db/helpers";
+import {
+  getAvailableStock,
+  isOutOfStock,
+  tracksStock,
+  validateCatalogStock,
+} from "@/lib/stock-client";
 
-function getEmptyIncomeValues(): IncomeEntryFormValues {
+function getEmptyIncomeValues(): DefaultValues<IncomeEntryFormValues> {
   return {
     date: normalizePickerDate(new Date()),
     categoryId: "",
     description: "",
     currency: Currency.USD,
-    amount: 0,
+    amount: undefined,
     exchangeRate: null,
     isPlantCategory: false,
     isVolumeSale: false,
@@ -73,7 +79,7 @@ function buildIncomeFormValues(
   categories: Category[],
   plants: Plant[],
   defaultExchangeRate: number
-): IncomeEntryFormValues {
+): DefaultValues<IncomeEntryFormValues> {
   if (!editEntry) return getEmptyIncomeValues();
 
   const lineValues = (editEntry.lines ?? []).map((l) => ({
@@ -213,6 +219,18 @@ export function IncomeForm({
         }
       : values;
 
+    if (usesCatalog) {
+      const stockError = validateCatalogStock(
+        payload.lines,
+        catalogProducts,
+        editEntry
+      );
+      if (stockError) {
+        toast.error(stockError);
+        return;
+      }
+    }
+
     startTransition(async () => {
       try {
         if (editEntry) {
@@ -225,8 +243,10 @@ export function IncomeForm({
           form.reset(getEmptyIncomeValues());
         }
         router.refresh();
-      } catch {
-        toast.error("Error al guardar el ingreso");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Error al guardar el ingreso"
+        );
       }
     });
   };
@@ -339,6 +359,12 @@ export function IncomeForm({
                   const lineUnitLabel = lineProduct
                     ? getMeasurementUnitLabel(lineProduct.measurementUnit)
                     : "unidad";
+                  const availableStock = lineProduct
+                    ? getAvailableStock(lineProduct, lines, index, editEntry)
+                    : null;
+                  const lineQuantity = form.watch(`lines.${index}.quantity`) ?? 0;
+                  const exceedsStock =
+                    availableStock != null && lineQuantity > availableStock;
 
                   return (
                   <div key={field.id} className="space-y-3 rounded-md border border-border/50 bg-background p-3">
@@ -358,12 +384,28 @@ export function IncomeForm({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="max-w-[var(--radix-select-trigger-width)]">
-                              {catalogProducts.map((p) => (
-                                <SelectItem key={p.id} value={p.id} className="whitespace-normal">
-                                  {p.name} — {formatNio(p.basePrice)} /{" "}
-                                  {getMeasurementUnitShort(p.measurementUnit)}
-                                </SelectItem>
-                              ))}
+                              {catalogProducts.map((p) => {
+                                const disabled =
+                                  isOutOfStock(p) &&
+                                  p.id !== linePlantId &&
+                                  !editEntry?.lines?.some((line) => line.plantId === p.id);
+
+                                return (
+                                  <SelectItem
+                                    key={p.id}
+                                    value={p.id}
+                                    disabled={disabled}
+                                    className="whitespace-normal"
+                                  >
+                                    {p.name} — {formatNio(p.basePrice)} /{" "}
+                                    {getMeasurementUnitShort(p.measurementUnit)}
+                                    {tracksStock(p)
+                                      ? ` — Stock: ${p.stock}`
+                                      : ""}
+                                    {isOutOfStock(p) ? " (agotado)" : ""}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -379,17 +421,25 @@ export function IncomeForm({
                           <FormItem className="min-w-0">
                             <FormLabel>Cantidad ({lineUnitLabel})</FormLabel>
                             <FormControl>
-                              <Input
-                                type="number"
-                                min={0}
-                                step="0.001"
+                              <MoneyInput
                                 className="w-full min-w-0"
-                                {...f}
-                                onChange={(e) =>
-                                  f.onChange(parseFloat(e.target.value) || 0)
-                                }
+                                value={f.value}
+                                onChange={f.onChange}
+                                disabled={isPending}
                               />
                             </FormControl>
+                            {availableStock != null ? (
+                              <p
+                                className={
+                                  exceedsStock
+                                    ? "text-xs text-destructive"
+                                    : "text-xs text-muted-foreground"
+                                }
+                              >
+                                Disponible: {availableStock} {lineUnitLabel}
+                                {exceedsStock ? " — supera el stock" : ""}
+                              </p>
+                            ) : null}
                             <FormMessage />
                           </FormItem>
                         )}
@@ -402,17 +452,12 @@ export function IncomeForm({
                           <FormItem className="min-w-0">
                             <FormLabel>Precio unitario C$ (opcional)</FormLabel>
                             <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="Precio del catálogo"
+                              <MoneyInput
                                 className="w-full min-w-0"
-                                value={f.value ?? ""}
-                                onChange={(e) =>
-                                  f.onChange(
-                                    e.target.value ? parseFloat(e.target.value) : null
-                                  )
-                                }
+                                placeholder="Precio del catálogo"
+                                value={f.value}
+                                onChange={f.onChange}
+                                disabled={isPending}
                               />
                             </FormControl>
                             <FormMessage />
@@ -457,11 +502,10 @@ export function IncomeForm({
                   <FormItem>
                     <FormLabel>Monto total</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      <MoneyInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={isPending}
                       />
                     </FormControl>
                     <FormMessage />

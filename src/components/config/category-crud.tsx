@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,14 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   Form,
   FormControl,
@@ -29,6 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { categorySchema, type CategoryFormValues } from "@/lib/validations/category";
@@ -89,7 +83,7 @@ export function CategoryCrud({
     });
   };
 
-  const handleEdit = (cat: Category) => {
+  const handleEdit = useCallback((cat: Category) => {
     setEditingId(cat.id);
     form.reset({
       name: cat.name,
@@ -97,7 +91,7 @@ export function CategoryCrud({
       isActive: cat.isActive,
       isPlantCategory: cat.isPlantCategory,
     });
-  };
+  }, [form]);
 
   const handleDelete = () => {
     if (!confirmDeleteId) return;
@@ -113,6 +107,64 @@ export function CategoryCrud({
       }
     });
   };
+
+  const columns = useMemo<ColumnDef<Category>[]>(
+    () => [
+      {
+        id: "name",
+        header: "Nombre",
+        cell: ({ row }) => {
+          const cat = row.original;
+          return (
+            <div>
+              <p className="font-medium">{cat.name}</p>
+              {cat.description && (
+                <p className="text-xs text-muted-foreground">{cat.description}</p>
+              )}
+              {cat.isPlantCategory && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <Badge variant="secondary">Catálogo</Badge>
+                  {(productCounts[cat.id] ?? 0) > 0 && (
+                    <Badge variant="outline">
+                      {productCounts[cat.id]} producto(s)
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: "status",
+        header: "Estado",
+        cell: ({ row }) => (
+          <Badge variant={row.original.isActive ? "default" : "secondary"}>
+            {row.original.isActive ? "Activa" : "Inactiva"}
+          </Badge>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setConfirmDeleteId(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [productCounts, handleEdit]
+  );
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -213,54 +265,12 @@ export function CategoryCrud({
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categories.map((cat) => (
-                <TableRow key={cat.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{cat.name}</p>
-                      {cat.description && (
-                        <p className="text-xs text-muted-foreground">{cat.description}</p>
-                      )}
-                      {cat.isPlantCategory && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          <Badge variant="secondary">Catálogo</Badge>
-                          {(productCounts[cat.id] ?? 0) > 0 && (
-                            <Badge variant="outline">
-                              {productCounts[cat.id]} producto(s)
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={cat.isActive ? "default" : "secondary"}>
-                      {cat.isActive ? "Activa" : "Inactiva"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(cat)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteId(cat.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={columns}
+            data={categories}
+            getRowId={(cat) => cat.id}
+            emptyMessage="No hay categorías registradas"
+          />
         </CardContent>
       </Card>
 

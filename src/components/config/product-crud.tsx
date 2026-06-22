@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plant, MeasurementUnit, Category } from "@/types/database";
 import { getMeasurementUnitLabel, getMeasurementUnitShort } from "@/lib/measurement-unit";
@@ -14,14 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   Form,
   FormControl,
@@ -30,6 +23,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { DataTable } from "@/components/ui/data-table";
+import { MoneyInput } from "@/components/shared/money-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
@@ -71,10 +66,10 @@ export function ProductCrud({
       description: "",
       categoryId: defaultCategoryId,
       measurementUnit: MeasurementUnit.UNIT,
-      basePrice: 0,
+      basePrice: undefined,
       stock: null,
       isActive: true,
-    },
+    } satisfies DefaultValues<PlantFormValues>,
   });
 
   const measurementUnit = form.watch("measurementUnit");
@@ -95,7 +90,7 @@ export function ProductCrud({
           description: "",
           categoryId: defaultCategoryId,
           measurementUnit: MeasurementUnit.UNIT,
-          basePrice: 0,
+          basePrice: undefined,
           stock: null,
           isActive: true,
         });
@@ -107,7 +102,7 @@ export function ProductCrud({
     });
   };
 
-  const handleEdit = (product: Plant) => {
+  const handleEdit = useCallback((product: Plant) => {
     setEditingId(product.id);
     form.reset({
       name: product.name,
@@ -118,7 +113,7 @@ export function ProductCrud({
       stock: product.stock,
       isActive: product.isActive,
     });
-  };
+  }, [defaultCategoryId, form]);
 
   const handleDelete = () => {
     if (!confirmDeleteId) return;
@@ -145,6 +140,83 @@ export function ProductCrud({
     }
     return grouped;
   }, [products]);
+
+  const productColumns = useMemo<ColumnDef<Plant>[]>(
+    () => [
+      {
+        id: "name",
+        header: "Producto",
+        cell: ({ row }) => (
+          <div>
+            <p className="font-medium">{row.original.name}</p>
+            {row.original.description && (
+              <p className="text-xs text-muted-foreground">{row.original.description}</p>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "unit",
+        header: "Unidad",
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {getMeasurementUnitShort(row.original.measurementUnit)}
+          </span>
+        ),
+      },
+      {
+        id: "price",
+        header: "Precio",
+        cell: ({ row }) => formatNio(row.original.basePrice),
+      },
+      {
+        id: "stock",
+        header: "Stock",
+        cell: ({ row }) => {
+          if (row.original.stock == null) {
+            return <span className="text-muted-foreground">Sin control</span>;
+          }
+
+          const isDepleted = row.original.stock <= 0;
+
+          return (
+            <span className={isDepleted ? "font-medium text-destructive" : undefined}>
+              {row.original.stock} {getMeasurementUnitShort(row.original.measurementUnit)}
+              {isDepleted ? " (agotado)" : ""}
+            </span>
+          );
+        },
+      },
+      {
+        id: "status",
+        header: "Estado",
+        cell: ({ row }) => (
+          <Badge variant={row.original.isActive ? "default" : "secondary"}>
+            {row.original.isActive ? "Activo" : "Inactivo"}
+          </Badge>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setConfirmDeleteId(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [handleEdit]
+  );
 
   if (catalogCategories.length === 0) {
     return (
@@ -235,11 +307,10 @@ export function ProductCrud({
                   <FormItem>
                     <FormLabel>Precio base (C$)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      <MoneyInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={isPending}
                       />
                     </FormControl>
                     <FormMessage />
@@ -251,7 +322,7 @@ export function ProductCrud({
                 name="stock"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Stock en {unitLabel} (opcional)</FormLabel>
+                    <FormLabel>Stock disponible ({unitLabel})</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -263,6 +334,11 @@ export function ProductCrud({
                         }
                       />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Cantidad inicial en inventario. Se descuenta con cada venta y no
+                      permite vender por encima de este límite. Dejar vacío para no
+                      controlar stock.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -293,7 +369,7 @@ export function ProductCrud({
                         description: "",
                         categoryId: defaultCategoryId,
                         measurementUnit: MeasurementUnit.UNIT,
-                        basePrice: 0,
+                        basePrice: undefined,
                         stock: null,
                         isActive: true,
                       });
@@ -327,62 +403,11 @@ export function ProductCrud({
                     Sin productos. Agregue subcategorías como novillo, toro, vaca, etc.
                   </p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Producto</TableHead>
-                        <TableHead>Unidad</TableHead>
-                        <TableHead>Precio</TableHead>
-                        <TableHead>Stock</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((product) => (
-                        <TableRow key={product.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{product.name}</p>
-                              {product.description && (
-                                <p className="text-xs text-muted-foreground">
-                                  {product.description}
-                                </p>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {getMeasurementUnitShort(product.measurementUnit)}
-                          </TableCell>
-                          <TableCell>{formatNio(product.basePrice)}</TableCell>
-                          <TableCell>
-                            {product.stock != null
-                              ? `${product.stock} ${getMeasurementUnitShort(product.measurementUnit)}`
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={product.isActive ? "default" : "secondary"}>
-                              {product.isActive ? "Activo" : "Inactivo"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => handleEdit(product)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setConfirmDeleteId(product.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <DataTable
+                    columns={productColumns}
+                    data={items}
+                    getRowId={(product) => product.id}
+                  />
                 )}
               </div>
             );

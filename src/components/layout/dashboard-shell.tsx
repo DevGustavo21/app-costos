@@ -13,7 +13,7 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
     <SidebarProvider
       style={
         {
-          "--sidebar-width": "16rem",
+          "--sidebar-width": "18rem",
           "--header-height": "3rem",
         } as React.CSSProperties
       }
