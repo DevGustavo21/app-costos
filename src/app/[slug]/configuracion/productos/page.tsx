@@ -1,4 +1,4 @@
-import { CategoryType } from "@/types/database";
+import { Role, CategoryType } from "@/types/database";
 import { requireBusinessUnitAccess } from "@/lib/business-unit";
 import { getCategories } from "@/lib/actions/categories";
 import { getPlants } from "@/lib/actions/plants";
@@ -10,7 +10,7 @@ export default async function ProductosPage({
 }: {
   params: { slug: string };
 }) {
-  const { businessUnit } = await requireBusinessUnitAccess(params.slug);
+  const { businessUnit } = await requireBusinessUnitAccess(params.slug, Role.ADMIN);
   const businessUnitId = businessUnit.id;
 
   const [products, incomeCategories] = await Promise.all([

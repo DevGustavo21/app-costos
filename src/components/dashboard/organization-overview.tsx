@@ -13,9 +13,13 @@ import type { OrganizationDashboardData } from "@/lib/queries/organization-dashb
 
 type OrganizationOverviewProps = {
   data: OrganizationDashboardData;
+  canCreateBusinessUnit?: boolean;
 };
 
-export function OrganizationOverview({ data }: OrganizationOverviewProps) {
+export function OrganizationOverview({
+  data,
+  canCreateBusinessUnit = false,
+}: OrganizationOverviewProps) {
   const { units, pieData, periodLabel } = data;
 
   return (
@@ -83,11 +87,20 @@ export function OrganizationOverview({ data }: OrganizationOverviewProps) {
         <CardContent className="space-y-2">
           {units.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Aún no tiene unidades.{" "}
-              <Link href="/unidades/nueva" className="font-medium text-primary underline-offset-4 hover:underline">
-                Cree la primera aquí
-              </Link>
-              .
+              {canCreateBusinessUnit ? (
+                <>
+                  Aún no tiene unidades.{" "}
+                  <Link
+                    href="/unidades/nueva"
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Cree la primera aquí
+                  </Link>
+                  .
+                </>
+              ) : (
+                "Aún no tiene unidades asignadas."
+              )}
             </p>
           ) : (
             units.map((unit) => (

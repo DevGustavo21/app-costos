@@ -130,6 +130,15 @@ export function mapMembership(row: Row): Membership {
   };
 }
 
+export function mapUser(row: Row) {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    createdAt: row.created_at,
+  };
+}
+
 export function mapBudgetLine(row: Row): BudgetLine {
   return {
     id: row.id,

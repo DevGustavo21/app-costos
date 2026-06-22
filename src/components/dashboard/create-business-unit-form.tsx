@@ -66,7 +66,7 @@ export function CreateBusinessUnitForm() {
                   <FormLabel>Nombre</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Ej. Vivero Central"
+                      placeholder="Ej. Mi negocio"
                       disabled={isPending}
                       {...field}
                     />
@@ -93,7 +93,7 @@ export function CreateBusinessUnitForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+            <Button type="submit" disabled={isPending} className="w-full">
               {isPending ? (
                 <>
                   <Loader2 className="animate-spin" />

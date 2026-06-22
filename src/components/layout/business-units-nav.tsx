@@ -7,6 +7,7 @@ export type BusinessUnitNav = {
   id: string;
   slug: string;
   name: string;
+  role?: import("@/types/database").Role;
 };
 
 type BusinessUnitsNavProps = {

@@ -130,7 +130,7 @@ export function PieChartCard({
               key={item.id}
               type="button"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition-colors",
                 activeIndex === i
                   ? "bg-emerald-100 text-emerald-900"
                   : "bg-muted/60 text-muted-foreground hover:bg-muted"
@@ -142,7 +142,7 @@ export function PieChartCard({
                 style={{ backgroundColor: chartColor(i) }}
               />
               {item.name}
-              <span className="font-medium">
+              <span className="font-bold">
                 ({item.percentage?.toFixed(1) ?? 0}%)
               </span>
             </button>

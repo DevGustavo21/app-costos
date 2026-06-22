@@ -110,10 +110,10 @@ export function DateFilters({
           </div>
         )}
         <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-1 xl:col-span-2">
-          <Button onClick={applyFilters} className="flex-1">
+          <Button onClick={applyFilters} className="w-fit">
             Filtrar
           </Button>
-          <Button variant="outline" onClick={clearFilters}>
+          <Button variant="outline" onClick={clearFilters} className="w-fit">
             Limpiar
           </Button>
         </div>

@@ -2,15 +2,14 @@ import { requireBusinessUnitAccess } from "@/lib/business-unit";
 import { Suspense } from "react";
 import {
   getDashboardKpis,
-  getMonthlyTrend,
   getCostDistribution,
-  getIncomeDistribution,
   getBudgetExecution,
   parsePeriod,
 } from "@/lib/queries/dashboard";
+import { getDailyIncomeTrend } from "@/lib/queries/income-trend";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
-import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
-import { DistributionChart } from "@/components/dashboard/distribution-chart";
+import { IncomeAreaChart } from "@/components/dashboard/income-area-chart";
+import { CostDistributionSection } from "@/components/dashboard/cost-distribution-section";
 import { BudgetExecutionChart } from "@/components/dashboard/budget-execution-chart";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 
@@ -31,11 +30,10 @@ export default async function DashboardPage({
   const month = parseInt(sp.month ?? (now.getMonth() + 1).toString());
   const period = parsePeriod(year, month);
 
-  const [kpis, trend, costDist, incomeDist, budget] = await Promise.all([
+  const [kpis, incomeTrend, costDist, budget] = await Promise.all([
     getDashboardKpis(businessUnitId, period),
-    getMonthlyTrend(businessUnitId, 6),
+    getDailyIncomeTrend(businessUnitId, 12),
     getCostDistribution(businessUnitId, period),
-    getIncomeDistribution(businessUnitId, period),
     getBudgetExecution(businessUnitId, period),
   ]);
 
@@ -52,22 +50,9 @@ export default async function DashboardPage({
 
       <KpiCards {...kpis} />
 
-      <MonthlyTrendChart data={trend} />
+      <IncomeAreaChart data={incomeTrend} />
 
-      <DistributionChart
-        title="Distribución de costos"
-        data={costDist}
-        businessUnitId={businessUnitId}
-        period={period}
-        entryType="cost"
-      />
-      <DistributionChart
-        title="Distribución de ingresos"
-        data={incomeDist}
-        businessUnitId={businessUnitId}
-        period={period}
-        entryType="income"
-      />
+      <CostDistributionSection data={costDist} period={period} />
 
       <BudgetExecutionChart data={budget} />
     </div>

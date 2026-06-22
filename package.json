@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:seed": "npx tsx supabase/seed.ts",
+    "db:cleanup-demo": "npx tsx supabase/cleanup-demo.ts",
     "db:migrate": "npx tsx supabase/migrate.ts"
   },
   "dependencies": {

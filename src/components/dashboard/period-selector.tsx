@@ -64,6 +64,7 @@ export function PeriodSelector() {
       </div>
       <Button
         variant="outline"
+        className="w-fit"
         onClick={() =>
           apply(now.getFullYear().toString(), (now.getMonth() + 1).toString())
         }

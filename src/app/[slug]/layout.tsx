@@ -2,7 +2,9 @@ import { ReactNode } from "react";
 import {
   requireBusinessUnitAccess,
   businessUnitSlug,
+  getUserBusinessUnits,
 } from "@/lib/business-unit";
+import { canCreateBusinessUnit, canManageOrgUsers } from "@/lib/permissions";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 
 export default async function BusinessUnitLayout({
@@ -19,6 +21,7 @@ export default async function BusinessUnitLayout({
     id: m.businessUnitId,
     slug: m.businessUnit ? businessUnitSlug(m.businessUnit) : m.businessUnitId,
     name: m.businessUnit?.name ?? m.businessUnitId,
+    role: m.role,
   }));
 
   return (
@@ -29,6 +32,8 @@ export default async function BusinessUnitLayout({
       userName={user.name}
       userEmail={user.email}
       businessUnits={businessUnits}
+      canManageUsers={memberships.some((m) => canManageOrgUsers(m.role))}
+      canCreateBusinessUnit={canCreateBusinessUnit(memberships)}
     >
       {children}
     </DashboardShell>

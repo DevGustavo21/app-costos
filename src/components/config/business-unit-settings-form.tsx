@@ -103,7 +103,7 @@ export function BusinessUnitSettingsForm({
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="w-full">
               {isPending ? (
                 <>
                   <Loader2 className="animate-spin" />

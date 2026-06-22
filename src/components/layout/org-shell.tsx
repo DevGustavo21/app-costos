@@ -8,6 +8,8 @@ type OrgShellProps = {
   userName?: string | null;
   userEmail?: string;
   businessUnits?: BusinessUnitNav[];
+  canManageUsers?: boolean;
+  canCreateBusinessUnit?: boolean;
 };
 
 export function OrgShell({
@@ -15,6 +17,8 @@ export function OrgShell({
   userName,
   userEmail,
   businessUnits = [],
+  canManageUsers = false,
+  canCreateBusinessUnit = false,
 }: OrgShellProps) {
   return (
     <DashboardShell
@@ -22,6 +26,8 @@ export function OrgShell({
       userName={userName}
       userEmail={userEmail}
       businessUnits={businessUnits}
+      canManageUsers={canManageUsers}
+      canCreateBusinessUnit={canCreateBusinessUnit}
     >
       {children}
     </DashboardShell>

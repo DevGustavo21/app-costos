@@ -210,12 +210,17 @@ export function CostForm({
               )}
             />
 
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isPending} className="flex-1">
+            <div className="flex flex-col gap-2">
+              <Button type="submit" disabled={isPending} className="w-full">
                 {isPending ? "Guardando..." : "Guardar"}
               </Button>
               {editEntry && (
-                <Button type="button" variant="outline" onClick={onEditComplete}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-fit self-start"
+                  onClick={onEditComplete}
+                >
                   Cancelar
                 </Button>
               )}

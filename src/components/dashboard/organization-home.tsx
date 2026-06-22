@@ -14,9 +14,13 @@ import type { OrganizationDashboardData } from "@/lib/queries/organization-dashb
 
 type OrganizationHomeProps = {
   dashboard: OrganizationDashboardData;
+  canCreateBusinessUnit?: boolean;
 };
 
-export function OrganizationHome({ dashboard }: OrganizationHomeProps) {
+export function OrganizationHome({
+  dashboard,
+  canCreateBusinessUnit = false,
+}: OrganizationHomeProps) {
   return (
     <div className="flex flex-col gap-6 md:gap-8">
       <PageHeader
@@ -45,7 +49,10 @@ export function OrganizationHome({ dashboard }: OrganizationHomeProps) {
         />
       </div>
 
-      <OrganizationOverview data={dashboard} />
+      <OrganizationOverview
+        data={dashboard}
+        canCreateBusinessUnit={canCreateBusinessUnit}
+      />
     </div>
   );
 }

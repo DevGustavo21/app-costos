@@ -355,14 +355,15 @@ export function ProductCrud({
                   </FormItem>
                 )}
               />
-              <div className="flex gap-2">
-                <Button type="submit" disabled={isPending}>
+              <div className="flex flex-col gap-2">
+                <Button type="submit" disabled={isPending} className="w-full">
                   {editingId ? "Actualizar" : "Guardar"}
                 </Button>
                 {editingId && (
                   <Button
                     type="button"
                     variant="outline"
+                    className="w-fit self-start"
                     onClick={() => {
                       form.reset({
                         name: "",

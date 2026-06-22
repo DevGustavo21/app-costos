@@ -1,13 +1,13 @@
-/** Colores para gráficos (SVG no admite hsl(var) con tokens oklch). */
+/** Colores para gráficos — paleta azul (variantes shadcn). */
 export const CHART_COLORS = [
-  "#059669",
+  "#60a5fa",
+  "#3b82f6",
   "#2563eb",
-  "#d97706",
-  "#7c3aed",
-  "#db2777",
-  "#0891b2",
-  "#ea580c",
-  "#4f46e5",
+  "#1d4ed8",
+  "#1e40af",
+  "#93c5fd",
+  "#2b6cb0",
+  "#172554",
 ] as const;
 
 export function chartColor(index: number): string {

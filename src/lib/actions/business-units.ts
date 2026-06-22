@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
+import { getUserBusinessUnits } from "@/lib/business-unit";
+import { canCreateBusinessUnit } from "@/lib/permissions";
 import { db, newId } from "@/lib/db/helpers";
 import { mapBusinessUnit } from "@/lib/db/mappers";
 import {
@@ -45,6 +47,12 @@ async function insertBusinessUnit(
 
 export async function createBusinessUnit(input: unknown) {
   const { user } = await requireAuth();
+  const memberships = await getUserBusinessUnits(user.id);
+
+  if (!canCreateBusinessUnit(memberships)) {
+    throw new Error("No tiene permiso para crear unidades de negocio");
+  }
+
   const data = businessUnitSchema.parse(input);
   const id = newId();
   const slug = await ensureUniqueSlug(data.name);

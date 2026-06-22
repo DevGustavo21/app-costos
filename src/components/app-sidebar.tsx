@@ -14,6 +14,7 @@ import {
   TrendingDown,
   TrendingUp,
   TrendingUpIcon,
+  Users,
 } from "lucide-react";
 import { NavUser } from "@/components/nav-user";
 import {
@@ -38,6 +39,8 @@ import {
 } from "@/components/ui/sidebar";
 import type { BusinessUnitNav } from "@/components/layout/business-units-nav";
 import { cn } from "@/lib/utils";
+import { isViewerRole } from "@/lib/permissions";
+import { Role } from "@/types/database";
 
 export type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   mode?: "org" | "business";
@@ -46,6 +49,8 @@ export type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   userName?: string | null;
   userEmail?: string;
   businessUnits?: BusinessUnitNav[];
+  canManageUsers?: boolean;
+  canCreateBusinessUnit?: boolean;
 };
 
 type NavItem = {
@@ -130,7 +135,7 @@ function NavCollapsibleSection({
             isActive={isSectionActive}
             className={cn(
               isSectionActive &&
-                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary"
+                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary [&_svg]:text-sidebar-foreground"
             )}
           >
             <Icon />
@@ -183,7 +188,8 @@ function NavNestedCollapsible({
           <SidebarMenuSubButton
             isActive={isSectionActive}
             className={cn(
-              isSectionActive && "font-medium text-sidebar-foreground"
+              isSectionActive &&
+                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary [&_svg]:text-sidebar-foreground"
             )}
           >
             <Icon />
@@ -223,17 +229,15 @@ function BusinessUnitNavCollapsible({
   forceOpen?: boolean;
 }) {
   const pathname = usePathname();
+  const viewerOnly = unit.role != null && isViewerRole(unit.role);
   const nav = getUnitNavItems(unit.slug);
   const StatsIcon = nav.stats.icon;
   const SettingsIcon = nav.settings.icon;
   const base = `/${unit.slug}`;
   const isUnitActive = pathname === base || pathname.startsWith(`${base}/`);
-  const allItems: NavItem[] = [
-    nav.stats,
-    ...nav.income,
-    ...nav.costs,
-    nav.settings,
-  ];
+  const allItems: NavItem[] = viewerOnly
+    ? [nav.stats]
+    : [nav.stats, ...nav.income, ...nav.costs, nav.settings];
   const isSectionActive = allItems.some((item) =>
     isNavHrefActive(pathname, item.href, item.exact)
   );
@@ -250,7 +254,7 @@ function BusinessUnitNavCollapsible({
             isActive={isSectionActive}
             className={cn(
               isSectionActive &&
-                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary"
+                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary [&_svg]:text-sidebar-foreground"
             )}
           >
             <Building2 />
@@ -272,28 +276,32 @@ function BusinessUnitNavCollapsible({
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
 
-            <NavNestedCollapsible
-              label="Ingresos"
-              icon={TrendingUp}
-              items={nav.income}
-            />
-            <NavNestedCollapsible
-              label="Costos"
-              icon={TrendingDown}
-              items={nav.costs}
-            />
+            {!viewerOnly && (
+              <>
+                <NavNestedCollapsible
+                  label="Ingresos"
+                  icon={TrendingUp}
+                  items={nav.income}
+                />
+                <NavNestedCollapsible
+                  label="Costos"
+                  icon={TrendingDown}
+                  items={nav.costs}
+                />
 
-            <SidebarMenuSubItem>
-              <SidebarMenuSubButton
-                asChild
-                isActive={isNavHrefActive(pathname, nav.settings.href)}
-              >
-                <Link href={nav.settings.href}>
-                  <SettingsIcon />
-                  <span>{nav.settings.label}</span>
-                </Link>
-              </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={isNavHrefActive(pathname, nav.settings.href)}
+                  >
+                    <Link href={nav.settings.href}>
+                      <SettingsIcon />
+                      <span>{nav.settings.label}</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </>
+            )}
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>
@@ -308,6 +316,8 @@ export function AppSidebar({
   userName,
   userEmail,
   businessUnits = [],
+  canManageUsers = false,
+  canCreateBusinessUnit = false,
   ...props
 }: AppSidebarProps) {
   const user = {
@@ -351,11 +361,24 @@ export function AppSidebar({
                 icon={LayoutGrid}
                 items={[
                   { href: "/", label: "Resumen", icon: LayoutGrid, exact: true },
-                  {
-                    href: "/unidades/nueva",
-                    label: "Nueva unidad",
-                    icon: Plus,
-                  },
+                  ...(canCreateBusinessUnit
+                    ? [
+                        {
+                          href: "/unidades/nueva",
+                          label: "Nueva unidad",
+                          icon: Plus,
+                        } satisfies NavItem,
+                      ]
+                    : []),
+                  ...(canManageUsers
+                    ? [
+                        {
+                          href: "/usuarios",
+                          label: "Usuarios",
+                          icon: Users,
+                        } satisfies NavItem,
+                      ]
+                    : []),
                 ]}
               />
             </SidebarMenu>
