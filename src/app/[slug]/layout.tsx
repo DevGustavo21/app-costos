@@ -2,7 +2,6 @@ import { ReactNode } from "react";
 import {
   requireBusinessUnitAccess,
   businessUnitSlug,
-  getUserBusinessUnits,
 } from "@/lib/business-unit";
 import { canCreateBusinessUnit, canManageOrgUsers } from "@/lib/permissions";
 import { DashboardShell } from "@/components/layout/dashboard-shell";

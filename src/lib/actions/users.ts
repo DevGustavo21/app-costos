@@ -11,7 +11,6 @@ import {
   createOrgUserSchema,
   updateOrgUserSchema,
 } from "@/lib/validations/user";
-import { Role } from "@/types/database";
 import type { BusinessUnit } from "@/types/database";
 
 async function requireOrgUsersManagement() {

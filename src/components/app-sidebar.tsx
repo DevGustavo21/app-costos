@@ -40,7 +40,6 @@ import {
 import type { BusinessUnitNav } from "@/components/layout/business-units-nav";
 import { cn } from "@/lib/utils";
 import { isViewerRole } from "@/lib/permissions";
-import { Role } from "@/types/database";
 
 export type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   mode?: "org" | "business";
