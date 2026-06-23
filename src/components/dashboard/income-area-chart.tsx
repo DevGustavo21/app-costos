@@ -128,8 +128,8 @@ export function IncomeAreaChart({ data }: IncomeAreaChartProps) {
     });
   };
 
-  const formatTooltipDate = (value: string) => {
-    const date = new Date(value);
+  const formatTooltipDate = (value: React.ReactNode) => {
+    const date = new Date(String(value ?? ""));
     if (granularity === "month") {
       return format(date, "MMMM yyyy", { locale: es });
     }

@@ -21,6 +21,9 @@ type KpiCardsProps = {
   prevNet: number;
 };
 
+const kpiValueClass = "text-zinc-700 dark:text-zinc-300";
+const kpiMutedClass = "text-zinc-500 dark:text-zinc-400";
+
 export function KpiCards({
   totalIncome,
   totalCosts,
@@ -28,28 +31,28 @@ export function KpiCards({
   variationPct,
   variationAbs,
 }: KpiCardsProps) {
+  const margin =
+    totalIncome > 0 ? (netResult / totalIncome) * 100 : null;
+
   const cards = [
     {
       label: "Ingresos del período",
       value: formatUsd(totalIncome),
-      valueClassName: "text-emerald-700",
-      badge: null,
+      tags: null,
       footer: "Total registrado en el mes seleccionado",
     },
     {
       label: "Costos del período",
       value: formatUsd(totalCosts),
-      valueClassName: "text-red-600",
-      badge: null,
+      tags: null,
       footer: "Total de egresos en el mes seleccionado",
     },
     {
       label: "Resultado neto",
       value: formatUsd(netResult),
-      valueClassName: netResult >= 0 ? "text-emerald-700" : "text-red-600",
-      badge:
+      tags:
         variationPct !== 0 ? (
-          <Badge variant="outline">
+          <Badge variant={variationPct < 0 ? "destructive" : "secondary"}>
             {variationPct > 0 ? (
               <TrendingUpIcon className="size-3" />
             ) : (
@@ -63,33 +66,33 @@ export function KpiCards({
     },
     {
       label: "Margen",
-      value:
-        totalIncome > 0
-          ? `${((netResult / totalIncome) * 100).toFixed(1)}%`
-          : "—",
-      valueClassName: "text-foreground",
-      badge: null,
+      value: margin !== null ? `${margin.toFixed(1)}%` : "—",
+      tags: null,
       footer: "Utilidad sobre ingresos del período",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:border-zinc-200/80 *:data-[slot=card]:bg-zinc-50/90 *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:border-zinc-800 dark:*:data-[slot=card]:bg-zinc-900/40 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
       {cards.map((card) => (
         <Card key={card.label} className="@container/card">
           <CardHeader>
-            <CardDescription>{card.label}</CardDescription>
+            <CardDescription className={kpiMutedClass}>
+              {card.label}
+            </CardDescription>
             <CardTitle
               className={cn(
                 "text-2xl font-semibold tabular-nums @[250px]/card:text-3xl",
-                card.valueClassName
+                kpiValueClass
               )}
             >
               {card.value}
             </CardTitle>
-            {card.badge}
+            {card.tags}
           </CardHeader>
-          <CardFooter className="text-sm text-muted-foreground">{card.footer}</CardFooter>
+          <CardFooter className={cn("text-sm", kpiMutedClass)}>
+            {card.footer}
+          </CardFooter>
         </Card>
       ))}
     </div>
