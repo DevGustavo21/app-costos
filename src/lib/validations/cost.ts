@@ -20,10 +20,17 @@ export const costEntrySchema = z
       CostExpenseReportStatus.REPORTED_WITH_RECEIPT,
       CostExpenseReportStatus.REPORTED_WITHOUT_RECEIPT,
     ]),
+    invoiceNumber: z.string().max(100).nullable().optional(),
   })
   .refine(
     (data) => data.currency !== Currency.NIO || (data.exchangeRate && data.exchangeRate > 0),
     { message: "La tasa de cambio es requerida para NIO", path: ["exchangeRate"] }
+  )
+  .refine(
+    (data) =>
+      data.expenseReportStatus !== CostExpenseReportStatus.REPORTED_WITH_RECEIPT ||
+      Boolean(data.invoiceNumber?.trim()),
+    { message: "Ingrese el número de factura", path: ["invoiceNumber"] }
   );
 
 export type CostEntryFormValues = z.infer<typeof costEntrySchema>;

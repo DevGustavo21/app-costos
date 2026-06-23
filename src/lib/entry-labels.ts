@@ -68,6 +68,7 @@ export const CHANGELOG_FIELD_LABELS: Record<string, string> = {
   receiptUrls: "Facturas",
   paymentStatus: "Estado",
   expenseReportStatus: "Rendición",
+  invoiceNumber: "Nº factura",
   collectionStatus: "Estado",
   saleQuantity: "Cantidad",
   unitPrice: "Precio unitario",

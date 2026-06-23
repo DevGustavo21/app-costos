@@ -31,8 +31,10 @@ async function assertCatalogIncomeCategory(businessUnitId: string, categoryId: s
     .maybeSingle();
 
   if (error) throw error;
-  if (!data || data.type !== CategoryType.INCOME) {
-    throw new Error("Seleccione una categoría de ingreso válida");
+  if (!data || data.type !== CategoryType.INCOME || !data.is_plant_category) {
+    throw new Error(
+      "Seleccione una categoría de ingreso con venta por catálogo activada"
+    );
   }
 }
 

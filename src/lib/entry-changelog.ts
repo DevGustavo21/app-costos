@@ -86,6 +86,7 @@ export function buildCostSnapshot(entry: {
   receiptUrls: string[];
   paymentStatus: string;
   expenseReportStatus: string;
+  invoiceNumber?: string | null;
 }): ChangelogSnapshot {
   return {
     date: entry.date,
@@ -98,6 +99,7 @@ export function buildCostSnapshot(entry: {
     receiptUrls: entry.receiptUrls,
     paymentStatus: entry.paymentStatus,
     expenseReportStatus: entry.expenseReportStatus,
+    invoiceNumber: entry.invoiceNumber ?? null,
   };
 }
 

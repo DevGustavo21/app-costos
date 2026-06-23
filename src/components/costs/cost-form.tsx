@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Category, CostEntryWithCategory, Currency, CostPaymentStatus, CostExpenseReportStatus } from "@/types/database";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -60,6 +61,7 @@ function getEmptyCostValues(defaultDate?: string): DefaultValues<CostEntryFormVa
     receiptUrls: [],
     paymentStatus: CostPaymentStatus.ACCOUNTS_PAYABLE,
     expenseReportStatus: CostExpenseReportStatus.PENDING_REPORT,
+    invoiceNumber: null,
   };
 }
 
@@ -83,6 +85,7 @@ function buildCostFormValues(
     receiptUrls: editEntry.receiptUrls ?? [],
     paymentStatus: editEntry.paymentStatus,
     expenseReportStatus: editEntry.expenseReportStatus,
+    invoiceNumber: editEntry.invoiceNumber,
   };
 }
 
@@ -108,6 +111,9 @@ export function CostForm({
   });
 
   const currency = form.watch("currency");
+  const expenseReportStatus = form.watch("expenseReportStatus");
+  const requiresInvoiceNumber =
+    expenseReportStatus === CostExpenseReportStatus.REPORTED_WITH_RECEIPT;
 
   const onSubmit = (values: CostEntryFormValues) => {
     startTransition(async () => {
@@ -222,7 +228,15 @@ export function CostForm({
                 render={({ field }) => (
                   <FormItem className="min-w-0">
                     <FormLabel>Rendición</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        if (value !== CostExpenseReportStatus.REPORTED_WITH_RECEIPT) {
+                          form.setValue("invoiceNumber", null);
+                        }
+                      }}
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger className="w-full min-w-0">
                           <SelectValue />
@@ -241,6 +255,27 @@ export function CostForm({
                 )}
               />
             </div>
+
+            {requiresInvoiceNumber && (
+              <FormField
+                control={form.control}
+                name="invoiceNumber"
+                render={({ field }) => (
+                  <FormItem className="max-w-sm">
+                    <FormLabel>Número de factura</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        placeholder="Ej. 001-002-00012345"
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

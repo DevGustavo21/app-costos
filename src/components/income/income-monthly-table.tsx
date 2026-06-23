@@ -6,12 +6,14 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronDown, ChevronRight, Eye, Pencil, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { EntryType, IncomeEntryWithRelations } from "@/types/database";
+import { EntryType, IncomeCollectionStatus, IncomeEntryWithRelations } from "@/types/database";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
 import { formatNio, formatUsd, resolveIncomeDisplay } from "@/lib/currency";
+import { getIncomeMonthSummary } from "@/lib/income-month-summary";
 import { getIncomeCollectionStatusLabel } from "@/lib/entry-labels";
 import { getMeasurementUnitShort } from "@/lib/measurement-unit";
 import { MonthlyAccordionTable } from "@/components/shared/monthly-accordion-table";
@@ -21,6 +23,59 @@ import { deleteIncomeEntry, fetchIncomeChangelog } from "@/lib/actions/income";
 import { parseLocalDate } from "@/lib/db/helpers";
 import type { MonthlyGroup } from "@/lib/queries/costs";
 import { cn } from "@/lib/utils";
+
+function formatIncomeMonthTitle(monthLabel: string) {
+  return monthLabel.replace(/\s+de\s+/i, " ");
+}
+
+function IncomeMonthTrigger({
+  month,
+  volumePricing,
+  defaultExchangeRate,
+}: {
+  month: MonthlyGroup<IncomeEntryWithRelations>;
+  volumePricing: boolean;
+  defaultExchangeRate: number;
+}) {
+  const displayOptions = { volumePricing, defaultExchangeRate };
+  const { transactionCount, receivedTotal, receivableTotal, monthTotal } =
+    getIncomeMonthSummary(month.entries, displayOptions);
+  const transactionLabel = transactionCount === 1 ? "transacción" : "transacciones";
+
+  return (
+    <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 pr-2 text-left">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="font-semibold capitalize text-foreground">
+          {formatIncomeMonthTitle(month.monthLabel)}
+        </span>
+        <span className="text-sm text-muted-foreground">
+          ({transactionCount} {transactionLabel})
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {receivedTotal > 0 ? (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1 text-emerald-800">
+            <span className="size-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+            <span>Recibido</span>
+            <span className="font-semibold tabular-nums">{formatUsd(receivedTotal)}</span>
+          </span>
+        ) : null}
+        {receivableTotal > 0 ? (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-amber-900">
+            <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-hidden />
+            <span>Cuenta por cobrar</span>
+            <span className="font-semibold tabular-nums">{formatUsd(receivableTotal)}</span>
+          </span>
+        ) : null}
+        <span className="inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1.5 text-primary-foreground">
+          <span className="text-xs font-medium">Total del mes</span>
+          <span className="font-bold tabular-nums">{formatUsd(monthTotal)}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
 
 type IncomeMonthlyTableProps = {
   months: MonthlyGroup<IncomeEntryWithRelations>[];
@@ -201,8 +256,25 @@ export function IncomeMonthlyTable({
         {
           id: "collectionStatus",
           header: "Estado",
-          cell: ({ row }) =>
-            getIncomeCollectionStatusLabel(row.original.collectionStatus),
+          cell: ({ row }) => {
+            const status = row.original.collectionStatus;
+            const label = getIncomeCollectionStatusLabel(status);
+            const isReceivable =
+              status === IncomeCollectionStatus.ACCOUNTS_RECEIVABLE;
+
+            return (
+              <Badge
+                variant="outline"
+                className={cn(
+                  isReceivable
+                    ? "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-50"
+                    : "border-transparent bg-emerald-50 text-emerald-800 hover:bg-emerald-50"
+                )}
+              >
+                {label}
+              </Badge>
+            );
+          },
         },
         {
           id: "description",
@@ -331,6 +403,13 @@ export function IncomeMonthlyTable({
         renderTable={renderTable}
         emptyMessage="No hay ingresos registrados"
         filters={filters}
+        renderMonthTrigger={(month) => (
+          <IncomeMonthTrigger
+            month={month}
+            volumePricing={volumePricing}
+            defaultExchangeRate={defaultExchangeRate}
+          />
+        )}
       />
 
       <EntryChangelogDialog

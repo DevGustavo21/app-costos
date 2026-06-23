@@ -31,6 +31,12 @@ import {
   updateCategory,
   deleteCategory,
 } from "@/lib/actions/categories";
+import {
+  FORM_TABLE_FORM_SLOT,
+  FORM_TABLE_GRID,
+  FORM_TABLE_TABLE_SLOT,
+} from "@/lib/form-table-layout";
+import { cn } from "@/lib/utils";
 
 type CategoryCrudProps = {
   businessUnitId: string;
@@ -167,8 +173,8 @@ export function CategoryCrud({
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card className="shadow-sm">
+    <div className={FORM_TABLE_GRID}>
+      <Card className={cn("shadow-sm", FORM_TABLE_FORM_SLOT)}>
         <CardHeader>
           <CardTitle>{editingId ? "Editar categoría" : `Nueva — ${title}`}</CardTitle>
         </CardHeader>
@@ -261,7 +267,7 @@ export function CategoryCrud({
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card className={cn("shadow-sm", FORM_TABLE_TABLE_SLOT)}>
         <CardHeader>
           <CardTitle>{title}</CardTitle>
         </CardHeader>

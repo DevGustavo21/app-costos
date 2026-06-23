@@ -17,6 +17,7 @@ export default async function CostosPage({
     dateFrom?: string;
     dateTo?: string;
     categoryId?: string;
+    status?: string;
   };
 }) {
   const { slug } = params;
@@ -35,6 +36,7 @@ export default async function CostosPage({
       dateFrom: sp.dateFrom ? new Date(sp.dateFrom) : undefined,
       dateTo: sp.dateTo ? new Date(sp.dateTo) : undefined,
       categoryId: sp.categoryId,
+      paymentStatus: sp.status,
     }),
     getExchangeRate(businessUnitId),
   ]);

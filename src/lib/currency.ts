@@ -54,6 +54,10 @@ export function formatUsd(amount: number | string): string {
   }).format(n);
 }
 
+export function roundMoney(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
 export function formatAmount(amount: number | string, currency: Currency): string {
   const n = typeof amount === "string" ? parseFloat(amount) : amount;
   return new Intl.NumberFormat("es-NI", {

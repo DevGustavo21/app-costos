@@ -1,4 +1,4 @@
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { db, dateOnly } from "@/lib/db/helpers";
 import { getUserBusinessUnits, businessUnitSlug } from "@/lib/business-unit";
@@ -23,6 +23,8 @@ export type OrganizationDashboardData = {
     costs: number;
     net: number;
     unitCount: number;
+    variationPct: number;
+    variationAbs: number;
   };
 };
 
@@ -44,6 +46,8 @@ export async function getOrganizationDashboard(
   const resolvedMemberships = memberships ?? (await getUserBusinessUnits(userId));
   const start = startOfMonth(new Date());
   const end = endOfMonth(start);
+  const prevStart = startOfMonth(subMonths(start, 1));
+  const prevEnd = endOfMonth(prevStart);
   const periodLabel = format(start, "MMMM yyyy", { locale: es });
   const buIds = resolvedMemberships.map((m) => m.businessUnitId);
 
@@ -52,14 +56,23 @@ export async function getOrganizationDashboard(
       periodLabel,
       units: [],
       pieData: [],
-      totals: { income: 0, costs: 0, net: 0, unitCount: 0 },
+      totals: {
+        income: 0,
+        costs: 0,
+        net: 0,
+        unitCount: 0,
+        variationPct: 0,
+        variationAbs: 0,
+      },
     };
   }
 
   const dateFrom = dateOnly(start);
   const dateTo = dateOnly(end);
+  const prevDateFrom = dateOnly(prevStart);
+  const prevDateTo = dateOnly(prevEnd);
 
-  const [incomeRes, costRes] = await Promise.all([
+  const [incomeRes, costRes, prevIncomeRes, prevCostRes] = await Promise.all([
     db()
       .from("income_entries")
       .select("business_unit_id, amount_usd")
@@ -72,10 +85,24 @@ export async function getOrganizationDashboard(
       .in("business_unit_id", buIds)
       .gte("date", dateFrom)
       .lte("date", dateTo),
+    db()
+      .from("income_entries")
+      .select("amount_usd")
+      .in("business_unit_id", buIds)
+      .gte("date", prevDateFrom)
+      .lte("date", prevDateTo),
+    db()
+      .from("cost_entries")
+      .select("amount_usd")
+      .in("business_unit_id", buIds)
+      .gte("date", prevDateFrom)
+      .lte("date", prevDateTo),
   ]);
 
   if (incomeRes.error) throw incomeRes.error;
   if (costRes.error) throw costRes.error;
+  if (prevIncomeRes.error) throw prevIncomeRes.error;
+  if (prevCostRes.error) throw prevCostRes.error;
 
   const incomeByUnit = aggregateByUnit(incomeRes.data ?? []);
   const costByUnit = aggregateByUnit(costRes.data ?? []);
@@ -104,6 +131,19 @@ export async function getOrganizationDashboard(
     { income: 0, costs: 0, net: 0, unitCount: 0 }
   );
 
+  const prevIncome = (prevIncomeRes.data ?? []).reduce(
+    (sum, row) => sum + Number(row.amount_usd),
+    0
+  );
+  const prevCosts = (prevCostRes.data ?? []).reduce(
+    (sum, row) => sum + Number(row.amount_usd),
+    0
+  );
+  const prevNet = prevIncome - prevCosts;
+  const variationAbs = totals.net - prevNet;
+  const variationPct =
+    prevNet !== 0 ? (variationAbs / Math.abs(prevNet)) * 100 : 0;
+
   const pieBase = units.filter((u) => u.income > 0);
   const pieTotal = pieBase.reduce((s, u) => s + u.income, 0);
 
@@ -116,5 +156,14 @@ export async function getOrganizationDashboard(
     }))
     .sort((a, b) => b.value - a.value);
 
-  return { periodLabel, units, pieData, totals };
+  return {
+    periodLabel,
+    units,
+    pieData,
+    totals: {
+      ...totals,
+      variationPct,
+      variationAbs,
+    },
+  };
 }

@@ -420,7 +420,14 @@ export function IncomeForm({
                         <FormItem className="min-w-0">
                           <FormLabel>Producto</FormLabel>
                           <Select
-                            onValueChange={f.onChange}
+                            onValueChange={(value) => {
+                              f.onChange(value);
+                              const product = catalogProducts.find((p) => p.id === value);
+                              form.setValue(
+                                `lines.${index}.unitPrice`,
+                                product?.basePrice ?? null
+                              );
+                            }}
                             value={f.value || undefined}
                           >
                             <FormControl>
@@ -495,16 +502,20 @@ export function IncomeForm({
                         name={`lines.${index}.unitPrice`}
                         render={({ field: f }) => (
                           <FormItem className="min-w-0">
-                            <FormLabel>Precio unitario C$ (opcional)</FormLabel>
+                            <FormLabel>Precio unitario C$</FormLabel>
                             <FormControl>
                               <MoneyInput
                                 className="w-full min-w-0"
-                                placeholder="Precio del catálogo"
-                                value={f.value}
+                                value={f.value ?? lineProduct?.basePrice}
                                 onChange={f.onChange}
-                                disabled={isPending}
+                                disabled={isPending || !lineProduct}
                               />
                             </FormControl>
+                            {lineProduct ? (
+                              <p className="text-xs text-muted-foreground">
+                                Precio del catálogo: {formatNio(lineProduct.basePrice)}
+                              </p>
+                            ) : null}
                             <FormMessage />
                           </FormItem>
                         )}

@@ -14,7 +14,31 @@ export const plantSchema = z.object({
   categoryId: z.string().min(1, "Seleccione la categoría de ingreso"),
 });
 
-export type PlantFormValues = z.infer<typeof plantSchema>;
+export const plantFormSchema = plantSchema
+  .extend({
+    trackStock: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.trackStock && (data.stock == null || data.stock === undefined)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Ingrese el stock disponible",
+        path: ["stock"],
+      });
+    }
+  });
+
+export type PlantFormValues = z.infer<typeof plantFormSchema>;
+
+export function toPlantPayload(values: PlantFormValues) {
+  const { trackStock, ...rest } = values;
+  return plantSchema.parse({
+    ...rest,
+    stock: trackStock ? (rest.stock ?? 0) : null,
+  });
+}
+
+export type PlantPayload = z.infer<typeof plantSchema>;
 
 export const plantActionSchema = plantSchema.extend({
   businessUnitId: entityIdSchema,

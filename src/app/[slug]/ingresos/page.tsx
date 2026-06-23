@@ -20,6 +20,7 @@ export default async function IngresosPage({
     dateTo?: string;
     categoryId?: string;
     plantId?: string;
+    status?: string;
   };
 }) {
   const { slug } = params;
@@ -40,6 +41,7 @@ export default async function IngresosPage({
       dateTo: sp.dateTo ? new Date(sp.dateTo) : undefined,
       categoryId: sp.categoryId,
       plantId: sp.plantId,
+      collectionStatus: sp.status,
     }),
     getExchangeRate(businessUnitId),
   ]);

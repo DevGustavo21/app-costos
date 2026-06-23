@@ -286,6 +286,15 @@ function CostSnapshotTable({
         ),
       },
       {
+        accessorKey: "invoiceNumber",
+        header: "Nº factura",
+        cell: ({ row: r }) => (
+          <span className={changedCellClass(changedFields.has("invoiceNumber"))}>
+            {r.original.invoiceNumber}
+          </span>
+        ),
+      },
+      {
         accessorKey: "description",
         header: "Descripción",
         cell: ({ row: r }) => (

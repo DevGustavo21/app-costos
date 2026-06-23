@@ -69,6 +69,18 @@ function isNavHrefActive(pathname: string, href: string, exact?: boolean) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** Unidad de negocio y ítems hoja activos */
+const navUnitActiveClass =
+  "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary [&_svg]:text-sidebar-foreground";
+
+/** Sección colapsable con hijo activo (p. ej. Ingresos): solo énfasis en texto */
+const navSectionActiveClass =
+  "data-[active=true]:!bg-transparent data-[active=true]:font-semibold data-[active=true]:!text-foreground hover:data-[active=true]:bg-sidebar-accent data-[active=true]:[&_svg]:text-sidebar-foreground";
+
+/** Subítems hoja activos: subrayado en el texto, sin fondo */
+const navLeafActiveClass =
+  "data-[active=true]:!bg-transparent data-[active=true]:font-medium data-[active=true]:!text-foreground hover:data-[active=true]:bg-sidebar-accent data-[active=true]:[&>span]:underline data-[active=true]:[&>span]:underline-offset-[3px] data-[active=true]:[&>span]:decoration-sidebar-primary data-[active=true]:[&>span]:decoration-2";
+
 function getUnitNavItems(slug: string) {
   return {
     stats: {
@@ -135,10 +147,7 @@ function NavCollapsibleSection({
           <SidebarMenuButton
             tooltip={label}
             isActive={isSectionActive}
-            className={cn(
-              isSectionActive &&
-                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary [&_svg]:text-sidebar-foreground"
-            )}
+            className={cn(isSectionActive && navSectionActiveClass)}
           >
             <Icon />
             <span>{label}</span>
@@ -153,7 +162,11 @@ function NavCollapsibleSection({
 
               return (
                 <SidebarMenuSubItem key={item.href}>
-                  <SidebarMenuSubButton asChild isActive={active}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={active}
+                    className={cn(active && navLeafActiveClass)}
+                  >
                     <Link href={item.href}>
                       <ItemIcon />
                       <span>{item.label}</span>
@@ -189,10 +202,7 @@ function NavNestedCollapsible({
         <CollapsibleTrigger asChild>
           <SidebarMenuSubButton
             isActive={isSectionActive}
-            className={cn(
-              isSectionActive &&
-                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary [&_svg]:text-sidebar-foreground"
-            )}
+            className={cn(isSectionActive && navSectionActiveClass)}
           >
             <Icon />
             <span>{label}</span>
@@ -207,7 +217,12 @@ function NavNestedCollapsible({
 
               return (
                 <SidebarMenuSubItem key={item.href}>
-                  <SidebarMenuSubButton asChild isActive={active} size="sm">
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={active}
+                    size="sm"
+                    className={cn(active && navLeafActiveClass)}
+                  >
                     <Link href={item.href}>
                       <ItemIcon />
                       <span>{item.label}</span>
@@ -256,10 +271,7 @@ function BusinessUnitNavCollapsible({
           <SidebarMenuButton
             tooltip={unit.name}
             isActive={isSectionActive}
-            className={cn(
-              isSectionActive &&
-                "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary [&_svg]:text-sidebar-foreground"
-            )}
+            className={cn(isSectionActive && navUnitActiveClass)}
           >
             <UnitIcon />
             <span>{unit.name}</span>
@@ -272,6 +284,10 @@ function BusinessUnitNavCollapsible({
               <SidebarMenuSubButton
                 asChild
                 isActive={isNavHrefActive(pathname, nav.stats.href, nav.stats.exact)}
+                className={cn(
+                  isNavHrefActive(pathname, nav.stats.href, nav.stats.exact) &&
+                    navLeafActiveClass
+                )}
               >
                 <Link href={nav.stats.href}>
                   <StatsIcon />
@@ -297,6 +313,9 @@ function BusinessUnitNavCollapsible({
                   <SidebarMenuSubButton
                     asChild
                     isActive={isNavHrefActive(pathname, nav.settings.href)}
+                    className={cn(
+                      isNavHrefActive(pathname, nav.settings.href) && navLeafActiveClass
+                    )}
                   >
                     <Link href={nav.settings.href}>
                       <SettingsIcon />

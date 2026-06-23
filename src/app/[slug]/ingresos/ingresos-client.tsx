@@ -6,6 +6,11 @@ import { IncomeForm } from "@/components/income/income-form";
 import { IncomeMonthlyTable } from "@/components/income/income-monthly-table";
 import { DateFilters } from "@/components/shared/date-filters";
 import { PageHeader } from "@/components/layout/page-header";
+import {
+  FORM_TABLE_FORM_SLOT,
+  FORM_TABLE_GRID,
+  FORM_TABLE_TABLE_SLOT,
+} from "@/lib/form-table-layout";
 import { cn } from "@/lib/utils";
 
 type IngresosClientProps = {
@@ -70,9 +75,9 @@ export function IngresosClient({
         description="Registro y consulta de ingresos, incluyendo ventas de plantas"
       />
 
-      <div className="grid gap-5 lg:grid-cols-1 xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
+      <div className={FORM_TABLE_GRID}>
         {canWrite && (
-          <div ref={formSectionRef} className="min-w-0 xl:max-w-md">
+          <div ref={formSectionRef} className={cn(FORM_TABLE_FORM_SLOT)}>
             <IncomeForm
             key={editEntry?.id ?? "new"}
             businessUnitId={businessUnitId}
@@ -86,7 +91,7 @@ export function IngresosClient({
           </div>
         )}
 
-        <div className={cn("min-w-0", !canWrite && "xl:col-span-full")}>
+        <div className={cn(FORM_TABLE_TABLE_SLOT, !canWrite && "xl:col-span-full")}>
           <IncomeMonthlyTable
             months={months}
             defaultMonthKey={defaultMonthKey}
@@ -106,8 +111,7 @@ export function IngresosClient({
                 <DateFilters
                   categories={categories}
                   plants={plants}
-                  showPlantFilter
-                  compact
+                  entryType="income"
                   embedded
                 />
               </Suspense>

@@ -96,6 +96,11 @@ export function CostMonthlyTable({
           getCostExpenseReportStatusLabel(row.original.expenseReportStatus),
       },
       {
+        id: "invoiceNumber",
+        header: "Nº factura",
+        cell: ({ row }) => row.original.invoiceNumber ?? "—",
+      },
+      {
         id: "description",
         header: "Descripción",
         cell: ({ row }) => (

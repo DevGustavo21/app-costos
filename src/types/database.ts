@@ -137,6 +137,7 @@ export type CostEntry = {
   receiptUrls: string[];
   paymentStatus: CostPaymentStatus;
   expenseReportStatus: CostExpenseReportStatus;
+  invoiceNumber: string | null;
   createdById: string | null;
   createdAt: string;
   updatedAt: string;

@@ -18,7 +18,9 @@ export default async function ProductosPage({
     getCategories(businessUnitId, CategoryType.INCOME),
   ]);
 
-  const parentCategories = incomeCategories.filter((c) => c.isActive);
+  const parentCategories = incomeCategories.filter(
+    (c) => c.isActive && c.isPlantCategory
+  );
 
   return (
     <div className="space-y-6">

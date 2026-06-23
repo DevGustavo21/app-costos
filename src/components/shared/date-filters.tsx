@@ -14,13 +14,18 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Category, Plant } from "@/types/database";
+import {
+  COST_PAYMENT_STATUS_OPTIONS,
+  getCostPaymentStatusLabel,
+  getIncomeCollectionStatusLabel,
+  INCOME_COLLECTION_STATUS_OPTIONS,
+} from "@/lib/entry-labels";
 import { cn } from "@/lib/utils";
 
 type DateFiltersProps = {
   categories: Category[];
+  entryType: "income" | "cost";
   plants?: Plant[];
-  showPlantFilter?: boolean;
-  compact?: boolean;
   embedded?: boolean;
   className?: string;
 };
@@ -48,8 +53,8 @@ function FilterField({
 
 export function DateFilters({
   categories,
+  entryType,
   plants = [],
-  showPlantFilter = false,
   embedded = false,
   className,
 }: DateFiltersProps) {
@@ -59,13 +64,29 @@ export function DateFilters({
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") ?? "");
   const [categoryId, setCategoryId] = useState(searchParams.get("categoryId") ?? "all");
   const [plantId, setPlantId] = useState(searchParams.get("plantId") ?? "all");
+  const [status, setStatus] = useState(searchParams.get("status") ?? "all");
+
+  const showPlantFilter = entryType === "income";
+
+  const statusOptions =
+    entryType === "income"
+      ? INCOME_COLLECTION_STATUS_OPTIONS
+      : COST_PAYMENT_STATUS_OPTIONS;
+
+  const getStatusLabel = (value: string) => {
+    if (entryType === "income") {
+      return getIncomeCollectionStatusLabel(value as never);
+    }
+    return getCostPaymentStatusLabel(value as never);
+  };
 
   const applyFilters = () => {
     const params = new URLSearchParams();
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     if (categoryId && categoryId !== "all") params.set("categoryId", categoryId);
-    if (plantId && plantId !== "all") params.set("plantId", plantId);
+    if (showPlantFilter && plantId && plantId !== "all") params.set("plantId", plantId);
+    if (status && status !== "all") params.set("status", status);
     router.push(`?${params.toString()}`);
   };
 
@@ -74,6 +95,7 @@ export function DateFilters({
     setDateTo("");
     setCategoryId("all");
     setPlantId("all");
+    setStatus("all");
     router.push("?");
   };
 
@@ -81,8 +103,8 @@ export function DateFilters({
     <div
       className={cn(
         embedded
-          ? "border-b border-border/50 px-5 py-3"
-          : "rounded-xl bg-card p-4 shadow-sm",
+          ? "border-b border-border/50 bg-background/50 px-5 py-4"
+          : "rounded-xl border border-border/60 bg-muted/40 p-4 shadow-sm",
         className
       )}
     >
@@ -95,7 +117,7 @@ export function DateFilters({
         <div
           className={cn(
             "grid grid-cols-1 gap-3 sm:grid-cols-2",
-            showPlantFilter ? "xl:grid-cols-5" : "xl:grid-cols-4"
+            showPlantFilter ? "xl:grid-cols-6" : "xl:grid-cols-5"
           )}
         >
           <FilterField label="Desde" htmlFor="dateFrom" className="min-w-0">
@@ -134,23 +156,39 @@ export function DateFilters({
             </Select>
           </FilterField>
 
-          {showPlantFilter && (
+          {showPlantFilter ? (
             <FilterField label="Producto" className="min-w-0">
               <Select value={plantId} onValueChange={setPlantId}>
                 <SelectTrigger className="h-8 w-full">
-                  <SelectValue placeholder="Todas" />
+                  <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {plants.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
+                  <SelectItem value="all">Todos</SelectItem>
+                  {plants.map((plant) => (
+                    <SelectItem key={plant.id} value={plant.id}>
+                      {plant.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </FilterField>
-          )}
+          ) : null}
+
+          <FilterField label="Estado" className="min-w-0">
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="h-8 w-full">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {statusOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {getStatusLabel(option)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
 
           <div className="flex items-end gap-2 sm:col-span-2 xl:col-span-1">
             <Button onClick={applyFilters} size="sm" className="h-8 flex-1 xl:flex-none">

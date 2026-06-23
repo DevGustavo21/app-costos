@@ -13,6 +13,7 @@ export type CostFilters = {
   dateFrom?: Date;
   dateTo?: Date;
   categoryId?: string;
+  paymentStatus?: string;
 };
 
 export async function getCostsGroupedByMonth(
@@ -27,6 +28,7 @@ export async function getCostsGroupedByMonth(
     .order("created_at", { ascending: false });
 
   if (filters.categoryId) query = query.eq("category_id", filters.categoryId);
+  if (filters.paymentStatus) query = query.eq("payment_status", filters.paymentStatus);
   if (filters.dateFrom) query = query.gte("date", dateOnly(filters.dateFrom));
   if (filters.dateTo) query = query.lte("date", dateOnly(filters.dateTo));
 

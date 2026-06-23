@@ -37,9 +37,15 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { MeasurementUnitField } from "@/components/shared/measurement-unit-field";
-import { plantSchema, type PlantFormValues } from "@/lib/validations/plant";
+import { plantFormSchema, toPlantPayload, type PlantFormValues } from "@/lib/validations/plant";
 import { createPlant, updatePlant, deletePlant } from "@/lib/actions/plants";
 import { formatNio } from "@/lib/currency";
+import {
+  FORM_TABLE_FORM_SLOT,
+  FORM_TABLE_GRID,
+  FORM_TABLE_TABLE_SLOT,
+} from "@/lib/form-table-layout";
+import { cn } from "@/lib/utils";
 
 type ProductCrudProps = {
   businessUnitId: string;
@@ -60,29 +66,32 @@ export function ProductCrud({
   const defaultCategoryId = catalogCategories[0]?.id ?? "";
 
   const form = useForm<PlantFormValues>({
-    resolver: zodResolver(plantSchema),
+    resolver: zodResolver(plantFormSchema),
     defaultValues: {
       name: "",
       description: "",
       categoryId: defaultCategoryId,
       measurementUnit: MeasurementUnit.UNIT,
       basePrice: undefined,
+      trackStock: false,
       stock: null,
       isActive: true,
     } satisfies DefaultValues<PlantFormValues>,
   });
 
   const measurementUnit = form.watch("measurementUnit");
+  const trackStock = form.watch("trackStock");
   const unitLabel = getMeasurementUnitLabel(measurementUnit);
 
   const onSubmit = (values: PlantFormValues) => {
+    const payload = toPlantPayload(values);
     startTransition(async () => {
       try {
         if (editingId) {
-          await updatePlant(businessUnitId, editingId, values);
+          await updatePlant(businessUnitId, editingId, payload);
           toast.success("Producto actualizado");
         } else {
-          await createPlant(businessUnitId, values);
+          await createPlant(businessUnitId, payload);
           toast.success("Producto creado");
         }
         form.reset({
@@ -91,6 +100,7 @@ export function ProductCrud({
           categoryId: defaultCategoryId,
           measurementUnit: MeasurementUnit.UNIT,
           basePrice: undefined,
+          trackStock: false,
           stock: null,
           isActive: true,
         });
@@ -110,6 +120,7 @@ export function ProductCrud({
       categoryId: product.categoryId ?? defaultCategoryId,
       measurementUnit: product.measurementUnit,
       basePrice: product.basePrice,
+      trackStock: product.stock != null,
       stock: product.stock,
       isActive: product.isActive,
     });
@@ -174,7 +185,7 @@ export function ProductCrud({
         header: "Stock",
         cell: ({ row }) => {
           if (row.original.stock == null) {
-            return <span className="text-muted-foreground">Sin control</span>;
+            return <span className="text-muted-foreground">Ilimitado</span>;
           }
 
           const isDepleted = row.original.stock <= 0;
@@ -222,19 +233,20 @@ export function ProductCrud({
     return (
       <Alert>
         <InfoIcon className="h-4 w-4" />
-        <AlertTitle>Sin categorías de ingreso</AlertTitle>
+        <AlertTitle>Sin categorías con catálogo</AlertTitle>
         <AlertDescription>
-          Cree categorías activas en{" "}
-          <strong>Categorías de ingresos</strong> (ej. Ganado, Leche) y luego agregue
-          aquí los subproductos con precio y stock (novillo, toro, vaca, etc.).
+          Active <strong>Venta por catálogo en ingresos</strong> en al menos una
+          categoría de <strong>Categorías de ingresos</strong> (ej. Ganado, Leche) y
+          luego agregue aquí los subproductos con precio y stock (novillo, toro, vaca,
+          etc.).
         </AlertDescription>
       </Alert>
     );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
+    <div className={FORM_TABLE_GRID}>
+      <Card className={cn(FORM_TABLE_FORM_SLOT)}>
         <CardHeader>
           <CardTitle>{editingId ? "Editar producto" : "Nuevo producto"}</CardTitle>
         </CardHeader>
@@ -319,30 +331,59 @@ export function ProductCrud({
               />
               <FormField
                 control={form.control}
-                name="stock"
+                name="trackStock"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Stock disponible ({unitLabel})</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.001"
-                        value={field.value ?? ""}
-                        onChange={(e) =>
-                          field.onChange(e.target.value ? parseFloat(e.target.value) : null)
-                        }
-                      />
-                    </FormControl>
+                  <FormItem className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            if (!checked) {
+                              form.setValue("stock", null);
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <Label>¿Desea activar stock?</Label>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      Cantidad inicial en inventario. Se descuenta con cada venta y no
-                      permite vender por encima de este límite. Dejar vacío para no
-                      controlar stock.
+                      Si está desactivado, el producto tiene stock ilimitado y no se
+                      valida inventario al vender.
                     </p>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
+              {trackStock && (
+                <FormField
+                  control={form.control}
+                  name="stock"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stock disponible ({unitLabel})</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.001"
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value ? parseFloat(e.target.value) : null
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Cantidad inicial en inventario. Se descuenta con cada venta y no
+                        permite vender por encima de este límite.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={form.control}
                 name="isActive"
@@ -371,6 +412,7 @@ export function ProductCrud({
                         categoryId: defaultCategoryId,
                         measurementUnit: MeasurementUnit.UNIT,
                         basePrice: undefined,
+                        trackStock: false,
                         stock: null,
                         isActive: true,
                       });
@@ -386,7 +428,7 @@ export function ProductCrud({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={cn(FORM_TABLE_TABLE_SLOT)}>
         <CardHeader>
           <CardTitle>Productos por categoría</CardTitle>
         </CardHeader>

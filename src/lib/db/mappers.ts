@@ -72,6 +72,7 @@ export function mapCostEntry(row: Row): CostEntry {
     receiptUrls: parseReceiptUrls(row),
     paymentStatus: row.payment_status ?? "ACCOUNTS_PAYABLE",
     expenseReportStatus: row.expense_report_status ?? "PENDING_REPORT",
+    invoiceNumber: row.invoice_number ?? null,
     createdById: row.created_by_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
-import { EntryType, Role } from "@/types/database";
+import { EntryType, Role, CostExpenseReportStatus } from "@/types/database";
 import { db, newId, dateOnly } from "@/lib/db/helpers";
 import { mapCostEntry } from "@/lib/db/mappers";
 import { requireBusinessUnitAccess } from "@/lib/business-unit";
@@ -34,6 +34,7 @@ async function snapshotFromRow(
     receiptUrls: row.receiptUrls,
     paymentStatus: row.paymentStatus,
     expenseReportStatus: row.expenseReportStatus,
+    invoiceNumber: row.invoiceNumber,
   });
 }
 
@@ -65,6 +66,10 @@ export async function createCostEntry(businessUnitId: string, data: unknown) {
       receipt_url: parsed.receiptUrls?.[0] ?? null,
       payment_status: parsed.paymentStatus,
       expense_report_status: parsed.expenseReportStatus,
+      invoice_number:
+        parsed.expenseReportStatus === CostExpenseReportStatus.REPORTED_WITH_RECEIPT
+          ? parsed.invoiceNumber?.trim() || null
+          : null,
       created_by_id: user.id,
     })
     .select("*, categories(name)")
@@ -128,6 +133,10 @@ export async function updateCostEntry(
       receipt_url: parsed.receiptUrls?.[0] ?? null,
       payment_status: parsed.paymentStatus,
       expense_report_status: parsed.expenseReportStatus,
+      invoice_number:
+        parsed.expenseReportStatus === CostExpenseReportStatus.REPORTED_WITH_RECEIPT
+          ? parsed.invoiceNumber?.trim() || null
+          : null,
     })
     .eq("id", id)
     .eq("business_unit_id", businessUnitId)

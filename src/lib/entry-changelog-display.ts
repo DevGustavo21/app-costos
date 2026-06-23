@@ -44,6 +44,7 @@ export type ChangelogCostRow = {
   category: string;
   paymentStatus: string;
   expenseReportStatus: string;
+  invoiceNumber: string;
   description: string;
   amountNio: string;
   amountUsd: string;
@@ -146,6 +147,7 @@ export function normalizeCostSnapshot(
     expenseReportStatus: getCostExpenseReportStatusLabel(
       String(snapshot.expenseReportStatus ?? "PENDING_REPORT") as never
     ),
+    invoiceNumber: String(snapshot.invoiceNumber ?? "—"),
     description: String(snapshot.description ?? "—"),
     amountNio: formatNio(amountNio),
     amountUsd: formatUsd(amountUsd),
@@ -168,6 +170,7 @@ export const COST_CHANGELOG_FIELDS = [
   "category",
   "paymentStatus",
   "expenseReportStatus",
+  "invoiceNumber",
   "description",
   "amountNio",
   "amountUsd",

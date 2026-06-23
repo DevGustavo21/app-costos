@@ -2,15 +2,11 @@
 
 import { PageHeader } from "@/components/layout/page-header";
 import { OrganizationOverview } from "@/components/dashboard/organization-overview";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { KpiCard, KpiCardGrid } from "@/components/dashboard/kpi-card";
+import { Badge } from "@/components/ui/badge";
 import { formatUsd } from "@/lib/currency";
-import { cn } from "@/lib/utils";
 import type { OrganizationDashboardData } from "@/lib/queries/organization-dashboard";
+import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 
 type OrganizationHomeProps = {
   dashboard: OrganizationDashboardData;
@@ -21,6 +17,46 @@ export function OrganizationHome({
   dashboard,
   canCreateBusinessUnit = false,
 }: OrganizationHomeProps) {
+  const { totals } = dashboard;
+
+  const cards = [
+    {
+      label: "Unidades",
+      value: String(totals.unitCount),
+      tags: null,
+      footer: "Unidades de negocio con acceso",
+    },
+    {
+      label: "Ingresos totales",
+      value: formatUsd(totals.income),
+      tags: null,
+      footer: "Total registrado en el mes seleccionado",
+    },
+    {
+      label: "Costos totales",
+      value: formatUsd(totals.costs),
+      tags: null,
+      footer: "Total de egresos en el mes seleccionado",
+    },
+    {
+      label: "Resultado neto",
+      value: formatUsd(totals.net),
+      tags:
+        totals.variationPct !== 0 ? (
+          <Badge variant={totals.variationPct < 0 ? "destructive" : "secondary"}>
+            {totals.variationPct > 0 ? (
+              <TrendingUpIcon className="size-3" />
+            ) : (
+              <TrendingDownIcon className="size-3" />
+            )}
+            {totals.variationPct > 0 ? "+" : ""}
+            {totals.variationPct.toFixed(1)}%
+          </Badge>
+        ) : null,
+      footer: `${totals.variationAbs >= 0 ? "+" : ""}${formatUsd(totals.variationAbs)} vs mes anterior`,
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6 md:gap-8">
       <PageHeader
@@ -28,57 +64,16 @@ export function OrganizationHome({
         description={`Vista consolidada de sus unidades de negocio · ${dashboard.periodLabel}`}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Unidades" value={String(dashboard.totals.unitCount)} />
-        <SummaryCard
-          label="Ingresos totales"
-          value={formatUsd(dashboard.totals.income)}
-          valueClassName="text-emerald-700"
-        />
-        <SummaryCard
-          label="Costos totales"
-          value={formatUsd(dashboard.totals.costs)}
-          valueClassName="text-red-600"
-        />
-        <SummaryCard
-          label="Resultado neto"
-          value={formatUsd(dashboard.totals.net)}
-          valueClassName={
-            dashboard.totals.net >= 0 ? "text-emerald-700" : "text-red-600"
-          }
-        />
-      </div>
+      <KpiCardGrid>
+        {cards.map((card) => (
+          <KpiCard key={card.label} {...card} />
+        ))}
+      </KpiCardGrid>
 
       <OrganizationOverview
         data={dashboard}
         canCreateBusinessUnit={canCreateBusinessUnit}
       />
     </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  valueClassName,
-}: {
-  label: string;
-  value: string;
-  valueClassName?: string;
-}) {
-  return (
-    <Card className="@container/card">
-      <CardHeader>
-        <CardDescription>{label}</CardDescription>
-        <CardTitle
-          className={cn(
-            "text-2xl font-semibold tabular-nums @[250px]/card:text-3xl",
-            valueClassName
-          )}
-        >
-          {value}
-        </CardTitle>
-      </CardHeader>
-    </Card>
   );
 }

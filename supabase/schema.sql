@@ -72,6 +72,11 @@ CREATE TABLE IF NOT EXISTS cost_entries (
   amount_usd NUMERIC(12, 2) NOT NULL,
   receipt_url TEXT,
   receipt_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
+  payment_status TEXT NOT NULL DEFAULT 'ACCOUNTS_PAYABLE'
+    CHECK (payment_status IN ('PAID', 'ACCOUNTS_PAYABLE')),
+  expense_report_status TEXT NOT NULL DEFAULT 'PENDING_REPORT'
+    CHECK (expense_report_status IN ('PENDING_REPORT', 'REPORTED_WITH_RECEIPT', 'REPORTED_WITHOUT_RECEIPT')),
+  invoice_number TEXT,
   created_by_id UUID REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
