@@ -6,6 +6,7 @@ import { CostForm } from "@/components/costs/cost-form";
 import { CostMonthlyTable } from "@/components/costs/cost-monthly-table";
 import { DateFilters } from "@/components/shared/date-filters";
 import { PageHeader } from "@/components/layout/page-header";
+import { cn } from "@/lib/utils";
 
 type CostosClientProps = {
   businessUnitId: string;
@@ -41,13 +42,9 @@ export function CostosClient({
         description="Registro y consulta de egresos por categoría y período"
       />
 
-      <Suspense>
-        <DateFilters categories={categories} />
-      </Suspense>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <div className="grid gap-5 lg:grid-cols-1 xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
         {canWrite && (
-          <div ref={formSectionRef} className="min-w-0">
+          <div ref={formSectionRef} className="min-w-0 xl:max-w-md">
             <CostForm
             key={editEntry?.id ?? "new"}
             businessUnitId={businessUnitId}
@@ -59,13 +56,18 @@ export function CostosClient({
           </div>
         )}
 
-        <div className={canWrite ? "min-w-0" : "xl:col-span-full"}>
+        <div className={cn("min-w-0", !canWrite && "xl:col-span-full")}>
           <CostMonthlyTable
             months={months}
             defaultMonthKey={defaultMonthKey}
             businessUnitId={businessUnitId}
             canWrite={canWrite}
             onEdit={handleEdit}
+            filters={
+              <Suspense>
+                <DateFilters categories={categories} compact embedded />
+              </Suspense>
+            }
           />
         </div>
       </div>

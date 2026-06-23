@@ -20,6 +20,7 @@ type MonthlyAccordionTableProps<T> = {
   defaultMonthKey: string;
   renderTable: (entries: T[]) => React.ReactNode;
   emptyMessage?: string;
+  filters?: React.ReactNode;
 };
 
 export function MonthlyAccordionTable<T>({
@@ -27,17 +28,22 @@ export function MonthlyAccordionTable<T>({
   defaultMonthKey,
   renderTable,
   emptyMessage = "No hay registros",
+  filters,
 }: MonthlyAccordionTableProps<T>) {
   if (months.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-xl bg-card py-16 shadow-sm">
-        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      <div className="overflow-hidden rounded-xl bg-card shadow-sm">
+        {filters}
+        <div className="flex items-center justify-center py-16">
+          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="overflow-hidden rounded-xl bg-card shadow-sm">
+      {filters}
       <Accordion
         type="multiple"
         defaultValue={[defaultMonthKey]}

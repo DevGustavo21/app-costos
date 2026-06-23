@@ -22,6 +22,7 @@ type CostMonthlyTableProps = {
   businessUnitId: string;
   canWrite: boolean;
   onEdit: (entry: CostEntryWithCategory) => void;
+  filters?: React.ReactNode;
 };
 
 export function CostMonthlyTable({
@@ -30,6 +31,7 @@ export function CostMonthlyTable({
   businessUnitId,
   canWrite,
   onEdit,
+  filters,
 }: CostMonthlyTableProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -160,6 +162,7 @@ export function CostMonthlyTable({
         defaultMonthKey={defaultMonthKey}
         renderTable={renderTable}
         emptyMessage="No hay costos registrados"
+        filters={filters}
       />
 
       <ConfirmDialog

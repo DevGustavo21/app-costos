@@ -27,6 +27,7 @@ type IncomeMonthlyTableProps = {
   defaultExchangeRate: number;
   volumePricing: boolean;
   onEdit: (entry: IncomeEntryWithRelations) => void;
+  filters?: React.ReactNode;
 };
 
 function IncomeEntryDetailPanel({
@@ -115,6 +116,7 @@ export function IncomeMonthlyTable({
   defaultExchangeRate,
   volumePricing,
   onEdit,
+  filters,
 }: IncomeMonthlyTableProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -304,6 +306,7 @@ export function IncomeMonthlyTable({
         defaultMonthKey={defaultMonthKey}
         renderTable={renderTable}
         emptyMessage="No hay ingresos registrados"
+        filters={filters}
       />
 
       <ConfirmDialog

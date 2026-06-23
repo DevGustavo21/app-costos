@@ -40,10 +40,18 @@ function assertManageableUnits(
   }
 }
 
+function assertManageableMemberships(
+  memberships: { businessUnitId: string }[],
+  manageableUnitIds: string[]
+) {
+  const unitIds = memberships.map((m) => m.businessUnitId);
+  assertManageableUnits(unitIds, manageableUnitIds);
+}
+
 export async function createOrgUser(input: unknown) {
   const { manageableUnitIds } = await requireOrgUsersManagement();
   const data = createOrgUserSchema.parse(input);
-  assertManageableUnits(data.businessUnitIds, manageableUnitIds);
+  assertManageableMemberships(data.memberships, manageableUnitIds);
 
   const admin = createAdminClient();
 
@@ -81,11 +89,11 @@ export async function createOrgUser(input: unknown) {
     throw new Error(profileError.message);
   }
 
-  const membershipRows = data.businessUnitIds.map((businessUnitId) => ({
+  const membershipRows = data.memberships.map(({ businessUnitId, role }) => ({
     id: newId(),
     user_id: userId,
     business_unit_id: businessUnitId,
-    role: data.role,
+    role,
   }));
 
   const { error: membershipError } = await db()
@@ -105,7 +113,7 @@ export async function createOrgUser(input: unknown) {
 export async function updateOrgUser(userId: string, input: unknown) {
   const { user, manageableUnitIds } = await requireOrgUsersManagement();
   const data = updateOrgUserSchema.parse(input);
-  assertManageableUnits(data.businessUnitIds, manageableUnitIds);
+  assertManageableMemberships(data.memberships, manageableUnitIds);
 
   if (userId === user.id) {
     throw new Error("No puede modificar su propio acceso desde esta pantalla");
@@ -150,11 +158,11 @@ export async function updateOrgUser(userId: string, input: unknown) {
 
   if (deleteError) throw new Error(deleteError.message);
 
-  const membershipRows = data.businessUnitIds.map((businessUnitId) => ({
+  const membershipRows = data.memberships.map(({ businessUnitId, role }) => ({
     id: newId(),
     user_id: userId,
     business_unit_id: businessUnitId,
-    role: data.role,
+    role,
   }));
 
   const { error: insertError } = await db()

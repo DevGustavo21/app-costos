@@ -67,6 +67,9 @@ export function CostForm({
     defaultValues: getEmptyCostValues(),
   });
 
+  const currency = form.watch("currency");
+  const showExchangeRate = currency === Currency.NIO;
+
   useEffect(() => {
     if (!editEntry) return;
 
@@ -112,53 +115,55 @@ export function CostForm({
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fecha</FormLabel>
-                  <FormControl>
-                    <DatePickerField
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="categoryId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoría</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || undefined}
-                    disabled={isPending}
-                  >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel>Fecha</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar categoría" />
-                      </SelectTrigger>
+                      <DatePickerField
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={isPending}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel>Categoría</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || undefined}
+                      disabled={isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full min-w-0">
+                          <SelectValue placeholder="Seleccionar categoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="w-[var(--radix-select-trigger-width)]">
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -167,25 +172,10 @@ export function CostForm({
                 <FormItem>
                   <FormLabel>Descripción</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={3} disabled={isPending} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <CurrencyFields form={form} defaultExchangeRate={defaultExchangeRate} />
-
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monto</FormLabel>
-                  <FormControl>
-                    <MoneyInput
-                      value={field.value}
-                      onChange={field.onChange}
+                    <Textarea
+                      {...field}
+                      value={field.value ?? ""}
+                      rows={2}
                       disabled={isPending}
                     />
                   </FormControl>
@@ -193,6 +183,71 @@ export function CostForm({
                 </FormItem>
               )}
             />
+
+            <CurrencyFields
+              form={form}
+              defaultExchangeRate={defaultExchangeRate}
+              currencyOnly
+            />
+
+            {showExchangeRate ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem className="min-w-0">
+                      <FormLabel>Monto total</FormLabel>
+                      <FormControl>
+                        <MoneyInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="exchangeRate"
+                  render={({ field }) => (
+                    <FormItem className="min-w-0">
+                      <FormLabel>Tasa de cambio (NIO → USD)</FormLabel>
+                      <FormControl>
+                        <MoneyInput
+                          placeholder={defaultExchangeRate?.toString()}
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Monto total</FormLabel>
+                    <FormControl>
+                      <MoneyInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

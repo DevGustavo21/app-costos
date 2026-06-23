@@ -25,12 +25,15 @@ type CurrencyFieldsProps = {
   defaultExchangeRate?: number;
   /** Si se define, la moneda queda fija (p. ej. ventas por volumen en córdobas). */
   fixedCurrency?: Currency;
+  /** Solo muestra el selector de moneda (sin tasa de cambio). */
+  currencyOnly?: boolean;
 };
 
 export function CurrencyFields({
   form,
   defaultExchangeRate,
   fixedCurrency,
+  currencyOnly = false,
 }: CurrencyFieldsProps) {
   const currency = (fixedCurrency ?? form.watch("currency")) as Currency;
 
@@ -72,7 +75,7 @@ export function CurrencyFields({
         />
       )}
 
-      {currency === Currency.NIO && (
+      {currency === Currency.NIO && !currencyOnly && (
         <FormField
           control={form.control}
           name="exchangeRate"

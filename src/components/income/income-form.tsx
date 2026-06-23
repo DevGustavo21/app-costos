@@ -26,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { MoneyInput } from "@/components/shared/money-input";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { CurrencyFields } from "@/components/shared/currency-fields";
@@ -148,6 +147,7 @@ export function IncomeForm({
 
   const selectedCategoryId = form.watch("categoryId");
   const lines = form.watch("lines");
+  const currency = form.watch("currency");
 
   const catalogProducts = useMemo(() => {
     if (!selectedCategoryId) return [];
@@ -180,6 +180,8 @@ export function IncomeForm({
     const cat = categories.find((c) => c.id === selectedCategoryId);
     return (cat?.isPlantCategory ?? false) || catalogProducts.length > 0;
   }, [selectedCategoryId, categories, catalogProducts.length]);
+
+  const showExchangeRate = usesCatalog || currency === Currency.NIO;
 
   useEffect(() => {
     if (editEntry) return;
@@ -261,59 +263,61 @@ export function IncomeForm({
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fecha</FormLabel>
-                  <FormControl>
-                    <DatePickerField
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="categoryId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoría</FormLabel>
-                  <Select
-                    key={field.value || "empty-category"}
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={isPending}
-                  >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel>Fecha</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar categoría" />
-                      </SelectTrigger>
+                      <DatePickerField
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={isPending}
+                      />
                     </FormControl>
-                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id} className="whitespace-normal">
-                          {cat.name}
-                          {(cat.isPlantCategory ||
-                            plants.some(
-                              (p) => p.isActive && p.categoryId === cat.id
-                            )) &&
-                            " (catálogo)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel>Categoría</FormLabel>
+                    <Select
+                      key={field.value || "empty-category"}
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full min-w-0">
+                          <SelectValue placeholder="Seleccionar categoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="w-[var(--radix-select-trigger-width)]">
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id} className="whitespace-normal">
+                            {cat.name}
+                            {(cat.isPlantCategory ||
+                              plants.some(
+                                (p) => p.isActive && p.categoryId === cat.id
+                              )) &&
+                              " (catálogo)"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -481,20 +485,66 @@ export function IncomeForm({
                   );
                 })}
 
-                <Separator />
-                <p className="text-sm font-medium">
-                  Total calculado: {formatNio(calculatedTotal)}
-                </p>
               </div>
             )}
 
-            <CurrencyFields
-              form={form}
-              defaultExchangeRate={defaultExchangeRate}
-              fixedCurrency={usesCatalog ? Currency.NIO : undefined}
-            />
-
             {!usesCatalog && (
+              <CurrencyFields
+                form={form}
+                defaultExchangeRate={defaultExchangeRate}
+                currencyOnly
+              />
+            )}
+
+            {showExchangeRate ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {usesCatalog ? (
+                  <div className="flex min-h-9 flex-col justify-end rounded-md border border-input bg-muted/30 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">Total calculado</span>
+                    <span className="text-sm font-semibold tabular-nums">
+                      {formatNio(calculatedTotal)}
+                    </span>
+                  </div>
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel>Monto total</FormLabel>
+                        <FormControl>
+                          <MoneyInput
+                            value={field.value}
+                            onChange={field.onChange}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="exchangeRate"
+                  render={({ field }) => (
+                    <FormItem className="min-w-0">
+                      <FormLabel>Tasa de cambio (NIO → USD)</FormLabel>
+                      <FormControl>
+                        <MoneyInput
+                          placeholder={defaultExchangeRate?.toString()}
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
               <FormField
                 control={form.control}
                 name="amount"

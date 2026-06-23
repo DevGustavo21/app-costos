@@ -38,16 +38,35 @@ import {
 } from "@/lib/actions/users";
 import {
   ASSIGNABLE_MEMBER_ROLES,
-  getAssignableRoleDescription,
   getRoleLabel,
 } from "@/lib/permissions";
 import type { OrgUserRow } from "@/lib/queries/users";
 import {
   getOrgUserFormSchema,
+  toMembershipAssignments,
   type OrgUserFormValues,
+  type UnitAccessFormValue,
 } from "@/lib/validations/user";
 import { Role } from "@/types/database";
 import type { BusinessUnit } from "@/types/database";
+
+function buildUnitAccess(
+  businessUnits: BusinessUnit[],
+  editingUser: OrgUserRow | null
+): UnitAccessFormValue[] {
+  return businessUnits.map((unit) => {
+    const membership = editingUser?.memberships.find(
+      (m) => m.businessUnitId === unit.id
+    );
+
+    return {
+      businessUnitId: unit.id,
+      enabled: Boolean(membership),
+      role:
+        membership?.role === Role.ACCOUNTANT ? Role.ACCOUNTANT : Role.VIEWER,
+    };
+  });
+}
 
 type OrgUsersCrudProps = {
   users: OrgUserRow[];
@@ -79,29 +98,28 @@ function OrgUserForm({
           name: editingUser.name ?? "",
           email: editingUser.email,
           password: "",
-          businessUnitIds: editingUser.memberships.map((m) => m.businessUnitId),
-          role:
-            editingUser.memberships[0]?.role === Role.ACCOUNTANT
-              ? Role.ACCOUNTANT
-              : Role.VIEWER,
+          unitAccess: buildUnitAccess(businessUnits, editingUser),
         }
       : {
           name: "",
           email: "",
           password: "",
-          businessUnitIds: [],
-          role: Role.VIEWER,
+          unitAccess: buildUnitAccess(businessUnits, null),
         },
   });
 
-  const selectedRole = form.watch("role");
-  const selectedUnitIds = form.watch("businessUnitIds");
+  const unitAccess = form.watch("unitAccess");
 
-  const toggleUnit = (unitId: string, checked: boolean) => {
-    const current = form.getValues("businessUnitIds");
+  const updateUnitAccess = (
+    businessUnitId: string,
+    patch: Partial<Pick<UnitAccessFormValue, "enabled" | "role">>
+  ) => {
+    const current = form.getValues("unitAccess");
     form.setValue(
-      "businessUnitIds",
-      checked ? [...current, unitId] : current.filter((id) => id !== unitId),
+      "unitAccess",
+      current.map((unit) =>
+        unit.businessUnitId === businessUnitId ? { ...unit, ...patch } : unit
+      ),
       { shouldValidate: true }
     );
   };
@@ -166,38 +184,13 @@ function OrgUserForm({
 
         <FormField
           control={form.control}
-          name="role"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Rol</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar rol" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {ASSIGNABLE_MEMBER_ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {getRoleLabel(role)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {getAssignableRoleDescription(selectedRole)}
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="businessUnitIds"
+          name="unitAccess"
           render={() => (
             <FormItem>
-              <FormLabel>Unidades de negocio</FormLabel>
+              <FormLabel>Acceso por unidad de negocio</FormLabel>
+              <p className="text-xs text-muted-foreground">
+                Seleccione las unidades y asigne un rol específico en cada una.
+              </p>
               <div className="space-y-2 rounded-lg border p-3">
                 {businessUnits.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
@@ -205,19 +198,51 @@ function OrgUserForm({
                   </p>
                 ) : (
                   businessUnits.map((unit) => {
-                    const checked = selectedUnitIds.includes(unit.id);
+                    const access = unitAccess.find(
+                      (item) => item.businessUnitId === unit.id
+                    );
+                    if (!access) return null;
+
                     return (
-                      <div key={unit.id} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`unit-${unit.id}`}
-                          checked={checked}
-                          onCheckedChange={(value) =>
-                            toggleUnit(unit.id, value === true)
+                      <div
+                        key={unit.id}
+                        className="flex flex-col gap-2 rounded-md border border-border/50 bg-muted/20 p-3"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <Checkbox
+                            id={`unit-${unit.id}`}
+                            checked={access.enabled}
+                            onCheckedChange={(value) =>
+                              updateUnitAccess(unit.id, { enabled: value === true })
+                            }
+                          />
+                          <Label
+                            htmlFor={`unit-${unit.id}`}
+                            className="truncate font-normal"
+                          >
+                            {unit.name}
+                          </Label>
+                        </div>
+                        <Select
+                          value={access.role}
+                          disabled={!access.enabled}
+                          onValueChange={(role) =>
+                            updateUnitAccess(unit.id, {
+                              role: role as UnitAccessFormValue["role"],
+                            })
                           }
-                        />
-                        <Label htmlFor={`unit-${unit.id}`} className="font-normal">
-                          {unit.name}
-                        </Label>
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Rol" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ASSIGNABLE_MEMBER_ROLES.map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {getRoleLabel(role)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     );
                   })
@@ -260,6 +285,7 @@ export function OrgUsersCrud({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [createFormKey, setCreateFormKey] = useState(0);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const editingUser = useMemo(
@@ -272,14 +298,23 @@ export function OrgUsersCrud({
   }, []);
 
   const onSubmitForm = (values: OrgUserFormValues) => {
+    const memberships = toMembershipAssignments(values.unitAccess);
+    const payload = {
+      name: values.name,
+      email: values.email,
+      password: values.password,
+      memberships,
+    };
+
     startTransition(async () => {
       try {
         if (editingId) {
-          await updateOrgUser(editingId, values);
+          await updateOrgUser(editingId, payload);
           toast.success("Usuario actualizado");
         } else {
-          await createOrgUser(values);
+          await createOrgUser(payload);
           toast.success("Usuario creado");
+          setCreateFormKey((key) => key + 1);
         }
         resetForm();
         router.refresh();
@@ -338,33 +373,17 @@ export function OrgUsersCrud({
         ),
       },
       {
-        id: "units",
-        header: "Unidades",
+        id: "access",
+        header: "Accesos",
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
             {row.original.memberships.map((m) => (
               <Badge key={m.membershipId} variant="secondary">
-                {m.businessUnitName}
+                {m.businessUnitName} · {getRoleLabel(m.role)}
               </Badge>
             ))}
           </div>
         ),
-      },
-      {
-        id: "role",
-        header: "Rol",
-        cell: ({ row }) => {
-          const roles = Array.from(new Set(row.original.memberships.map((m) => m.role)));
-          return (
-            <div className="flex flex-wrap gap-1">
-              {roles.map((role) => (
-                <Badge key={role} variant="outline">
-                  {getRoleLabel(role)}
-                </Badge>
-              ))}
-            </div>
-          );
-        },
       },
       {
         id: "actions",
@@ -400,37 +419,41 @@ export function OrgUsersCrud({
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>{editingId ? "Editar usuario" : "Invitar usuario"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <OrgUserForm
-            key={editingId ?? "new"}
-            editingId={editingId}
-            editingUser={editingUser}
-            businessUnits={businessUnits}
-            isPending={isPending}
-            onSubmitForm={onSubmitForm}
-            onCancelEdit={resetForm}
-          />
-        </CardContent>
-      </Card>
+    <div className="grid gap-5 xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
+      <div className="min-w-0 xl:max-w-md">
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>{editingId ? "Editar usuario" : "Invitar usuario"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OrgUserForm
+              key={editingId ?? `create-${createFormKey}`}
+              editingId={editingId}
+              editingUser={editingUser}
+              businessUnits={businessUnits}
+              isPending={isPending}
+              onSubmitForm={onSubmitForm}
+              onCancelEdit={resetForm}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Usuarios</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            columns={columns}
-            data={users}
-            getRowId={(row) => row.id}
-            emptyMessage="No hay usuarios en sus unidades"
-          />
-        </CardContent>
-      </Card>
+      <div className="min-w-0">
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Usuarios</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              columns={columns}
+              data={users}
+              getRowId={(row) => row.id}
+              emptyMessage="No hay usuarios en sus unidades"
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       <ConfirmDialog
         open={confirmDeleteId != null}

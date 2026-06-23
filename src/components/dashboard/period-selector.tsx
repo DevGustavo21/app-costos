@@ -22,7 +22,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => {
   };
 });
 
-export function PeriodSelector() {
+export function PeriodSelector({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const now = new Date();
@@ -37,20 +37,20 @@ export function PeriodSelector() {
   };
 
   return (
-    <div className="flex items-end gap-3">
-      <div className="space-y-1">
-        <Label>Año</Label>
+    <div className="flex items-end gap-2.5 overflow-x-auto pb-0.5">
+      <div className="grid shrink-0 gap-1">
+        <Label className="text-xs text-muted-foreground">Año</Label>
         <Input
           type="number"
           value={year}
           onChange={(e) => apply(e.target.value, month)}
-          className="w-24"
+          className={embedded ? "h-8 w-24" : "w-24"}
         />
       </div>
-      <div className="space-y-1">
-        <Label>Mes</Label>
+      <div className="grid shrink-0 gap-1">
+        <Label className="text-xs text-muted-foreground">Mes</Label>
         <Select value={month} onValueChange={(m) => apply(year, m)}>
-          <SelectTrigger className="w-[140px] capitalize">
+          <SelectTrigger className={embedded ? "h-8 w-[8.75rem] capitalize" : "w-[140px] capitalize"}>
             <SelectValue placeholder="Mes" />
           </SelectTrigger>
           <SelectContent>
@@ -64,7 +64,8 @@ export function PeriodSelector() {
       </div>
       <Button
         variant="outline"
-        className="w-fit"
+        size={embedded ? "sm" : "default"}
+        className={embedded ? "h-8 w-fit shrink-0" : "w-fit"}
         onClick={() =>
           apply(now.getFullYear().toString(), (now.getMonth() + 1).toString())
         }

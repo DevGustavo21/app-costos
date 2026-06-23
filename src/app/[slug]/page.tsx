@@ -1,5 +1,4 @@
 import { requireBusinessUnitAccess } from "@/lib/business-unit";
-import { Suspense } from "react";
 import {
   getDashboardKpis,
   getCostDistribution,
@@ -11,7 +10,7 @@ import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { IncomeAreaChart } from "@/components/dashboard/income-area-chart";
 import { CostDistributionSection } from "@/components/dashboard/cost-distribution-section";
 import { BudgetExecutionChart } from "@/components/dashboard/budget-execution-chart";
-import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { PeriodKpiSection } from "@/components/dashboard/period-kpi-section";
 
 export default async function DashboardPage({
   params,
@@ -39,16 +38,9 @@ export default async function DashboardPage({
 
   return (
     <div className="flex flex-col gap-6 md:gap-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{period.label}</p>
-        </div>
-        <Suspense fallback={<div className="h-10 w-48 animate-pulse rounded-md bg-muted" />}>
-          <PeriodSelector />
-        </Suspense>
-      </div>
-
-      <KpiCards {...kpis} />
+      <PeriodKpiSection periodLabel={period.label}>
+        <KpiCards {...kpis} />
+      </PeriodKpiSection>
 
       <IncomeAreaChart data={incomeTrend} />
 
