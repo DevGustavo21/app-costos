@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, Suspense } from "react";
+import { useMemo, useRef, useState, Suspense } from "react";
 import { Category, CostEntryWithCategory } from "@/types/database";
 import { CostForm } from "@/components/costs/cost-form";
 import { CostMonthlyTable } from "@/components/costs/cost-monthly-table";
@@ -13,6 +13,7 @@ type CostosClientProps = {
   categories: Category[];
   months: import("@/lib/queries/costs").MonthlyGroup<CostEntryWithCategory>[];
   defaultMonthKey: string;
+  defaultDate: string;
   defaultExchangeRate: number;
   canWrite: boolean;
 };
@@ -22,11 +23,23 @@ export function CostosClient({
   categories,
   months,
   defaultMonthKey,
+  defaultDate,
   defaultExchangeRate,
   canWrite,
 }: CostosClientProps) {
   const [editEntry, setEditEntry] = useState<CostEntryWithCategory | null>(null);
   const formSectionRef = useRef<HTMLDivElement>(null);
+
+  const formCategories = useMemo(() => {
+    const active = categories.filter((c) => c.isActive);
+    if (!editEntry?.categoryId) return active;
+
+    if (active.some((c) => c.id === editEntry.categoryId)) return active;
+
+    const current =
+      categories.find((c) => c.id === editEntry.categoryId) ?? editEntry.category;
+    return current ? [...active, current] : active;
+  }, [categories, editEntry?.categoryId, editEntry?.category]);
 
   const handleEdit = (entry: CostEntryWithCategory) => {
     setEditEntry(entry);
@@ -48,8 +61,9 @@ export function CostosClient({
             <CostForm
             key={editEntry?.id ?? "new"}
             businessUnitId={businessUnitId}
-            categories={categories.filter((c) => c.isActive)}
+            categories={formCategories}
             defaultExchangeRate={defaultExchangeRate}
+            defaultDate={defaultDate}
             editEntry={editEntry}
             onEditComplete={() => setEditEntry(null)}
           />
@@ -61,10 +75,17 @@ export function CostosClient({
             months={months}
             defaultMonthKey={defaultMonthKey}
             businessUnitId={businessUnitId}
+            defaultExchangeRate={defaultExchangeRate}
             canWrite={canWrite}
             onEdit={handleEdit}
             filters={
-              <Suspense>
+              <Suspense
+                fallback={
+                  <div className="border-b border-border/50 px-5 py-3">
+                    <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
+                  </div>
+                }
+              >
                 <DateFilters categories={categories} compact embedded />
               </Suspense>
             }

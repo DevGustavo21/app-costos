@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Category, CostEntryWithCategory, Currency } from "@/types/database";
+import { Category, CostEntryWithCategory, Currency, CostPaymentStatus, CostExpenseReportStatus } from "@/types/database";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,24 +31,58 @@ import { ReceiptUpload } from "@/components/shared/receipt-upload";
 import { costEntrySchema, type CostEntryFormValues } from "@/lib/validations/cost";
 import { createCostEntry, updateCostEntry } from "@/lib/actions/costs";
 import { normalizePickerDate, parseLocalDate } from "@/lib/db/helpers";
+import {
+  COST_EXPENSE_REPORT_STATUS_OPTIONS,
+  COST_PAYMENT_STATUS_OPTIONS,
+  getCostExpenseReportStatusLabel,
+  getCostPaymentStatusLabel,
+} from "@/lib/entry-labels";
 
 type CostFormProps = {
   businessUnitId: string;
   categories: Category[];
   defaultExchangeRate: number;
+  defaultDate?: string;
   editEntry?: CostEntryWithCategory | null;
   onEditComplete?: () => void;
 };
 
-function getEmptyCostValues(): DefaultValues<CostEntryFormValues> {
+function getEmptyCostValues(defaultDate?: string): DefaultValues<CostEntryFormValues> {
   return {
-    date: normalizePickerDate(new Date()),
+    date: defaultDate
+      ? parseLocalDate(defaultDate)
+      : normalizePickerDate(new Date()),
     categoryId: "",
     description: "",
     currency: Currency.USD,
     amount: undefined,
     exchangeRate: null,
-    receiptUrl: null,
+    receiptUrls: [],
+    paymentStatus: CostPaymentStatus.ACCOUNTS_PAYABLE,
+    expenseReportStatus: CostExpenseReportStatus.PENDING_REPORT,
+  };
+}
+
+function buildCostFormValues(
+  editEntry: CostEntryWithCategory | null | undefined,
+  defaultExchangeRate: number,
+  defaultDate?: string
+): DefaultValues<CostEntryFormValues> {
+  if (!editEntry) return getEmptyCostValues(defaultDate);
+
+  const currency =
+    editEntry.currency === Currency.NIO ? Currency.NIO : Currency.USD;
+
+  return {
+    date: parseLocalDate(editEntry.date),
+    categoryId: editEntry.categoryId,
+    description: editEntry.description,
+    currency,
+    amount: editEntry.amount,
+    exchangeRate: editEntry.exchangeRate ?? defaultExchangeRate,
+    receiptUrls: editEntry.receiptUrls ?? [],
+    paymentStatus: editEntry.paymentStatus,
+    expenseReportStatus: editEntry.expenseReportStatus,
   };
 }
 
@@ -56,33 +90,24 @@ export function CostForm({
   businessUnitId,
   categories,
   defaultExchangeRate,
+  defaultDate,
   editEntry,
   onEditComplete,
 }: CostFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  const initialValues = useMemo(
+    () => buildCostFormValues(editEntry, defaultExchangeRate, defaultDate),
+    [editEntry, defaultExchangeRate, defaultDate]
+  );
+
   const form = useForm<CostEntryFormValues>({
     resolver: zodResolver(costEntrySchema),
-    defaultValues: getEmptyCostValues(),
+    defaultValues: initialValues,
   });
 
   const currency = form.watch("currency");
-  const showExchangeRate = currency === Currency.NIO;
-
-  useEffect(() => {
-    if (!editEntry) return;
-
-    form.reset({
-      date: parseLocalDate(editEntry.date),
-      categoryId: editEntry.categoryId,
-      description: editEntry.description,
-      currency: editEntry.currency,
-      amount: editEntry.amount,
-      exchangeRate: editEntry.exchangeRate,
-      receiptUrl: editEntry.receiptUrl,
-    });
-  }, [editEntry, form]);
 
   const onSubmit = (values: CostEntryFormValues) => {
     startTransition(async () => {
@@ -94,7 +119,7 @@ export function CostForm({
         } else {
           await createCostEntry(businessUnitId, values);
           toast.success("Costo registrado");
-          form.reset(getEmptyCostValues());
+          form.reset(getEmptyCostValues(defaultDate));
         }
         router.refresh();
       } catch (err) {
@@ -143,7 +168,7 @@ export function CostForm({
                     <FormLabel>Categoría</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      value={field.value || undefined}
+                      value={field.value}
                       disabled={isPending}
                     >
                       <FormControl>
@@ -155,6 +180,58 @@ export function CostForm({
                         {categories.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
                             {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="paymentStatus"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel>Estado</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-full min-w-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COST_PAYMENT_STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {getCostPaymentStatusLabel(status)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="expenseReportStatus"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel>Rendición</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-full min-w-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COST_EXPENSE_REPORT_STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {getCostExpenseReportStatusLabel(status)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -184,79 +261,40 @@ export function CostForm({
               )}
             />
 
-            <CurrencyFields
-              form={form}
-              defaultExchangeRate={defaultExchangeRate}
-              currencyOnly
-            />
-
-            {showExchangeRate ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>Monto total</FormLabel>
-                      <FormControl>
-                        <MoneyInput
-                          value={field.value}
-                          onChange={field.onChange}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="exchangeRate"
-                  render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel>Tasa de cambio (NIO → USD)</FormLabel>
-                      <FormControl>
-                        <MoneyInput
-                          placeholder={defaultExchangeRate?.toString()}
-                          value={field.value}
-                          onChange={field.onChange}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            ) : (
-              <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Monto total</FormLabel>
-                    <FormControl>
-                      <MoneyInput
-                        value={field.value}
-                        onChange={field.onChange}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <CurrencyFields
+                form={form}
+                defaultExchangeRate={defaultExchangeRate}
+                showExchangeRate
               />
-            )}
+            </div>
 
             <FormField
               control={form.control}
-              name="receiptUrl"
+              name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Foto de factura (opcional)</FormLabel>
+                  <FormLabel>Monto total ({currency === Currency.NIO ? "C$" : "USD"})</FormLabel>
+                  <FormControl>
+                    <MoneyInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="receiptUrls"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fotos de factura (opcional)</FormLabel>
                   <ReceiptUpload
-                    value={field.value}
+                    value={field.value ?? []}
                     onChange={field.onChange}
                     disabled={isPending}
                   />

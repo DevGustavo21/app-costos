@@ -14,6 +14,7 @@ type IngresosClientProps = {
   plants: Plant[];
   months: import("@/lib/queries/costs").MonthlyGroup<IncomeEntryWithRelations>[];
   defaultMonthKey: string;
+  defaultDate: string;
   defaultExchangeRate: number;
   canWrite: boolean;
 };
@@ -24,6 +25,7 @@ export function IngresosClient({
   plants,
   months,
   defaultMonthKey,
+  defaultDate,
   defaultExchangeRate,
   canWrite,
 }: IngresosClientProps) {
@@ -77,6 +79,7 @@ export function IngresosClient({
             categories={formCategories}
             plants={formPlants}
             defaultExchangeRate={defaultExchangeRate}
+            defaultDate={defaultDate}
             editEntry={editEntry}
             onEditComplete={() => setEditEntry(null)}
           />
@@ -93,7 +96,13 @@ export function IngresosClient({
             volumePricing={true}
             onEdit={handleEdit}
             filters={
-              <Suspense>
+              <Suspense
+                fallback={
+                  <div className="border-b border-border/50 px-5 py-3">
+                    <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
+                  </div>
+                }
+              >
                 <DateFilters
                   categories={categories}
                   plants={plants}

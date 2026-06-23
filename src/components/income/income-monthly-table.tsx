@@ -1,21 +1,24 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, Pencil, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { IncomeEntryWithRelations } from "@/types/database";
+import { EntryType, IncomeEntryWithRelations } from "@/types/database";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
 import { formatNio, formatUsd, resolveIncomeDisplay } from "@/lib/currency";
+import { getIncomeCollectionStatusLabel } from "@/lib/entry-labels";
 import { getMeasurementUnitShort } from "@/lib/measurement-unit";
 import { MonthlyAccordionTable } from "@/components/shared/monthly-accordion-table";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { deleteIncomeEntry } from "@/lib/actions/income";
+import { EntryChangelogDialog } from "@/components/shared/entry-changelog-dialog";
+import { deleteIncomeEntry, fetchIncomeChangelog } from "@/lib/actions/income";
+import { parseLocalDate } from "@/lib/db/helpers";
 import type { MonthlyGroup } from "@/lib/queries/costs";
 import { cn } from "@/lib/utils";
 
@@ -94,7 +97,7 @@ function IncomeEntryDetailPanel({
         data={entry.lines}
         getRowId={(line) => line.id}
       />
-      <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+      <div className="flex flex-wrap justify-end gap-x-6 gap-y-1 text-right text-sm">
         <span>
           <span className="text-muted-foreground">Total C$: </span>
           <span className="font-semibold tabular-nums">{formatNio(display.amountNio)}</span>
@@ -123,6 +126,12 @@ export function IncomeMonthlyTable({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [changelogEntry, setChangelogEntry] = useState<IncomeEntryWithRelations | null>(null);
+
+  const loadChangelog = useCallback(async () => {
+    if (!changelogEntry) return [];
+    return fetchIncomeChangelog(businessUnitId, changelogEntry.id);
+  }, [businessUnitId, changelogEntry]);
 
   const handleDelete = () => {
     if (!confirmDeleteId) return;
@@ -180,7 +189,7 @@ export function IncomeMonthlyTable({
           header: "Fecha",
           cell: ({ row }) => (
             <span className="whitespace-nowrap">
-              {format(new Date(row.original.date), "dd/MM/yyyy", { locale: es })}
+              {format(parseLocalDate(row.original.date), "dd/MM/yyyy", { locale: es })}
             </span>
           ),
         },
@@ -188,6 +197,12 @@ export function IncomeMonthlyTable({
           id: "category",
           header: "Categoría",
           cell: ({ row }) => row.original.category?.name,
+        },
+        {
+          id: "collectionStatus",
+          header: "Estado",
+          cell: ({ row }) =>
+            getIncomeCollectionStatusLabel(row.original.collectionStatus),
         },
         {
           id: "description",
@@ -247,35 +262,44 @@ export function IncomeMonthlyTable({
             );
           },
         },
-        ...(canWrite
-          ? [
-              {
-                id: "actions",
-                header: "Acciones",
-                cell: ({ row }: { row: { original: IncomeEntryWithRelations } }) => (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(row.original)}
-                      aria-label="Editar ingreso"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setConfirmDeleteId(row.original.id)}
-                      disabled={isPending && deletingId === row.original.id}
-                      aria-label="Eliminar ingreso"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                ),
-              } satisfies ColumnDef<IncomeEntryWithRelations>,
-            ]
-          : []),
+        {
+          id: "actions",
+          header: "Acciones",
+          cell: ({ row }: { row: { original: IncomeEntryWithRelations } }) => (
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Ver historial de cambios"
+                onClick={() => setChangelogEntry(row.original)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              {canWrite && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onEdit(row.original)}
+                    aria-label="Editar ingreso"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setConfirmDeleteId(row.original.id)}
+                    disabled={isPending && deletingId === row.original.id}
+                    aria-label="Eliminar ingreso"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </>
+              )}
+            </div>
+          ),
+        },
     ],
     [canWrite, defaultExchangeRate, deletingId, expandedId, isPending, onEdit, volumePricing]
   );
@@ -307,6 +331,20 @@ export function IncomeMonthlyTable({
         renderTable={renderTable}
         emptyMessage="No hay ingresos registrados"
         filters={filters}
+      />
+
+      <EntryChangelogDialog
+        open={changelogEntry != null}
+        onOpenChange={(open) => {
+          if (!open) setChangelogEntry(null);
+        }}
+        entryType={EntryType.INCOME}
+        title={
+          changelogEntry
+            ? `Ingreso del ${format(parseLocalDate(changelogEntry.date), "dd/MM/yyyy", { locale: es })}`
+            : "Historial"
+        }
+        loadChangelog={loadChangelog}
       />
 
       <ConfirmDialog

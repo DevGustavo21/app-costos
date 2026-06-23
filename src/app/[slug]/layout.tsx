@@ -4,6 +4,7 @@ import {
   businessUnitSlug,
 } from "@/lib/business-unit";
 import { canCreateBusinessUnit, canManageOrgUsers } from "@/lib/permissions";
+import { getCurrentUserProfile } from "@/lib/actions/profile";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 
 export default async function BusinessUnitLayout({
@@ -14,12 +15,14 @@ export default async function BusinessUnitLayout({
   params: { slug: string };
 }) {
   const { slug } = params;
-  const { businessUnit, user, memberships } = await requireBusinessUnitAccess(slug);
+  const { businessUnit, memberships } = await requireBusinessUnitAccess(slug);
+  const profile = await getCurrentUserProfile();
 
   const businessUnits = memberships.map((m) => ({
     id: m.businessUnitId,
     slug: m.businessUnit ? businessUnitSlug(m.businessUnit) : m.businessUnitId,
     name: m.businessUnit?.name ?? m.businessUnitId,
+    icon: m.businessUnit?.icon ?? null,
     role: m.role,
   }));
 
@@ -28,8 +31,10 @@ export default async function BusinessUnitLayout({
       mode="business"
       businessUnitSlug={businessUnitSlug(businessUnit)}
       businessUnitName={businessUnit.name}
-      userName={user.name}
-      userEmail={user.email}
+      userName={profile.name}
+      userEmail={profile.email}
+      userAvatarUrl={profile.avatarUrl}
+      userAvatarPreset={profile.avatarPreset}
       businessUnits={businessUnits}
       canManageUsers={memberships.some((m) => canManageOrgUsers(m.role))}
       canCreateBusinessUnit={canCreateBusinessUnit(memberships)}

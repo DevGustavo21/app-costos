@@ -1,4 +1,4 @@
-import { Currency } from "@/types/database";
+import { Currency, IncomeCollectionStatus } from "@/types/database";
 import { z } from "zod";
 import { entityIdSchema, optionalEntityIdSchema } from "./ids";
 
@@ -22,6 +22,10 @@ export const incomeEntrySchema = z
     saleQuantity: z.number().positive("La cantidad debe ser mayor a 0").optional(),
     unitPrice: z.number().positive("El precio unitario debe ser mayor a 0").optional(),
     lines: z.array(incomeLineSchema).optional(),
+    collectionStatus: z.enum([
+      IncomeCollectionStatus.RECEIVED,
+      IncomeCollectionStatus.ACCOUNTS_RECEIVABLE,
+    ]),
   })
   .refine(
     (data) => data.currency !== Currency.NIO || (data.exchangeRate && data.exchangeRate > 0),

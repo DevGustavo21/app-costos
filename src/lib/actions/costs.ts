@@ -1,22 +1,51 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
-import { Role } from "@/types/database";
+import { EntryType, Role } from "@/types/database";
 import { db, newId, dateOnly } from "@/lib/db/helpers";
 import { mapCostEntry } from "@/lib/db/mappers";
 import { requireBusinessUnitAccess } from "@/lib/business-unit";
-import { computeAmountUsd, getExchangeRate } from "@/lib/currency";
+import {
+  computeAmountUsd,
+  resolveExchangeRate,
+} from "@/lib/currency";
+import {
+  buildCostSnapshot,
+  getEntryChangelog,
+  logEntryChange,
+} from "@/lib/entry-changelog";
 import { costActionSchema } from "@/lib/validations/cost";
 
 const TAG = (buId: string) => `costs-${buId}`;
+
+async function snapshotFromRow(
+  row: ReturnType<typeof mapCostEntry>,
+  categoryName?: string
+) {
+  return buildCostSnapshot({
+    date: row.date,
+    categoryId: row.categoryId,
+    categoryName,
+    description: row.description,
+    currency: row.currency,
+    amount: row.amount,
+    exchangeRate: row.exchangeRate,
+    amountUsd: row.amountUsd,
+    receiptUrls: row.receiptUrls,
+    paymentStatus: row.paymentStatus,
+    expenseReportStatus: row.expenseReportStatus,
+  });
+}
 
 export async function createCostEntry(businessUnitId: string, data: unknown) {
   const { user } = await requireBusinessUnitAccess(businessUnitId, Role.ACCOUNTANT);
   const parsed = costActionSchema.parse({ ...(data as object), businessUnitId });
 
-  const rate =
-    parsed.exchangeRate ??
-    (parsed.currency === "NIO" ? await getExchangeRate(businessUnitId) : null);
+  const rate = await resolveExchangeRate(
+    businessUnitId,
+    parsed.currency,
+    parsed.exchangeRate
+  );
 
   const amountUsd = computeAmountUsd(parsed.amount, parsed.currency, rate);
 
@@ -32,17 +61,32 @@ export async function createCostEntry(businessUnitId: string, data: unknown) {
       amount: parsed.amount,
       exchange_rate: rate,
       amount_usd: amountUsd,
-      receipt_url: parsed.receiptUrl,
+      receipt_urls: parsed.receiptUrls ?? [],
+      receipt_url: parsed.receiptUrls?.[0] ?? null,
+      payment_status: parsed.paymentStatus,
+      expense_report_status: parsed.expenseReportStatus,
       created_by_id: user.id,
     })
-    .select()
+    .select("*, categories(name)")
     .single();
 
   if (error) throw error;
 
+  const mapped = mapCostEntry(entry);
+  const categoryName = entry.categories?.name ?? entry.categories?.[0]?.name;
+
+  await logEntryChange({
+    businessUnitId,
+    entryType: EntryType.COST,
+    entryId: mapped.id,
+    action: "CREATE",
+    snapshot: await snapshotFromRow(mapped, categoryName),
+    changedById: user.id,
+  });
+
   revalidateTag(TAG(businessUnitId));
   revalidateTag(`dashboard-${businessUnitId}`);
-  return { success: true, entry: mapCostEntry(entry) };
+  return { success: true, entry: mapped };
 }
 
 export async function updateCostEntry(
@@ -50,12 +94,23 @@ export async function updateCostEntry(
   id: string,
   data: unknown
 ) {
-  await requireBusinessUnitAccess(businessUnitId, Role.ACCOUNTANT);
+  const { user } = await requireBusinessUnitAccess(businessUnitId, Role.ACCOUNTANT);
   const parsed = costActionSchema.parse({ ...(data as object), businessUnitId, id });
 
-  const rate =
-    parsed.exchangeRate ??
-    (parsed.currency === "NIO" ? await getExchangeRate(businessUnitId) : null);
+  const { data: existing, error: existingError } = await db()
+    .from("cost_entries")
+    .select("*, categories(name)")
+    .eq("id", id)
+    .eq("business_unit_id", businessUnitId)
+    .single();
+
+  if (existingError || !existing) throw new Error("Costo no encontrado");
+
+  const rate = await resolveExchangeRate(
+    businessUnitId,
+    parsed.currency,
+    parsed.exchangeRate
+  );
 
   const amountUsd = computeAmountUsd(parsed.amount, parsed.currency, rate);
 
@@ -69,18 +124,37 @@ export async function updateCostEntry(
       amount: parsed.amount,
       exchange_rate: rate,
       amount_usd: amountUsd,
-      receipt_url: parsed.receiptUrl,
+      receipt_urls: parsed.receiptUrls ?? [],
+      receipt_url: parsed.receiptUrls?.[0] ?? null,
+      payment_status: parsed.paymentStatus,
+      expense_report_status: parsed.expenseReportStatus,
     })
     .eq("id", id)
     .eq("business_unit_id", businessUnitId)
-    .select()
+    .select("*, categories(name)")
     .single();
 
   if (error) throw error;
 
+  const mapped = mapCostEntry(entry);
+  const categoryName = entry.categories?.name ?? entry.categories?.[0]?.name;
+  const previous = mapCostEntry(existing);
+  const previousCategoryName =
+    existing.categories?.name ?? existing.categories?.[0]?.name;
+
+  await logEntryChange({
+    businessUnitId,
+    entryType: EntryType.COST,
+    entryId: mapped.id,
+    action: "UPDATE",
+    snapshot: await snapshotFromRow(mapped, categoryName),
+    previousSnapshot: await snapshotFromRow(previous, previousCategoryName),
+    changedById: user.id,
+  });
+
   revalidateTag(TAG(businessUnitId));
   revalidateTag(`dashboard-${businessUnitId}`);
-  return { success: true, entry: mapCostEntry(entry) };
+  return { success: true, entry: mapped };
 }
 
 export async function deleteCostEntry(businessUnitId: string, id: string) {
@@ -95,4 +169,9 @@ export async function deleteCostEntry(businessUnitId: string, id: string) {
   revalidateTag(TAG(businessUnitId));
   revalidateTag(`dashboard-${businessUnitId}`);
   return { success: true };
+}
+
+export async function fetchCostChangelog(businessUnitId: string, entryId: string) {
+  await requireBusinessUnitAccess(businessUnitId, Role.VIEWER);
+  return getEntryChangelog(businessUnitId, EntryType.COST, entryId);
 }

@@ -17,13 +17,14 @@ import { Role } from "@/types/database";
 async function insertBusinessUnit(
   id: string,
   slug: string,
-  data: { name: string; description?: string | null }
+  data: { name: string; description?: string | null; icon?: string | null }
 ) {
   const payload = {
     id,
     slug,
     name: data.name,
     description: data.description ?? null,
+    icon: data.icon ?? null,
     base_currency: "NIO" as const,
   };
 
@@ -36,6 +37,7 @@ async function insertBusinessUnit(
       id,
       name: data.name,
       description: data.description ?? null,
+      icon: data.icon ?? null,
       base_currency: "NIO",
     });
     if (fallbackError) throw new Error(fallbackError.message);
@@ -89,6 +91,7 @@ export async function updateBusinessUnit(businessUnitId: string, input: unknown)
     .update({
       name: data.name,
       description: data.description ?? null,
+      icon: data.icon ?? null,
       slug,
     })
     .eq("id", businessUnit.id)

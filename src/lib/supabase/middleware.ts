@@ -27,6 +27,9 @@ export async function updateSession(request: NextRequest) {
     if (isLoginPage || isAuthCallback) {
       return NextResponse.next();
     }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Configuración incompleta" }, { status: 503 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("error", "config");
@@ -58,6 +61,15 @@ export async function updateSession(request: NextRequest) {
     const user = session?.user;
 
     if (!user && !isLoginPage && !isAuthCallback) {
+      if (pathname.startsWith("/api/")) {
+        const unauthorized = NextResponse.json(
+          { error: "No autorizado" },
+          { status: 401 }
+        );
+        copyCookies(supabaseResponse, unauthorized);
+        return unauthorized;
+      }
+
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       const redirect = NextResponse.redirect(url);
@@ -79,6 +91,10 @@ export async function updateSession(request: NextRequest) {
 
     if (isLoginPage || isAuthCallback) {
       return NextResponse.next();
+    }
+
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
     const url = request.nextUrl.clone();

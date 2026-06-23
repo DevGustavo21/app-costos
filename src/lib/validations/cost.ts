@@ -1,4 +1,4 @@
-import { Currency } from "@/types/database";
+import { Currency, CostPaymentStatus, CostExpenseReportStatus } from "@/types/database";
 import { z } from "zod";
 import { entityIdSchema, optionalEntityIdSchema } from "./ids";
 
@@ -10,7 +10,16 @@ export const costEntrySchema = z
     currency: z.enum([Currency.USD, Currency.NIO]),
     amount: z.number().positive("El monto debe ser mayor a 0"),
     exchangeRate: z.number().positive().nullable().optional(),
-    receiptUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
+    receiptUrls: z.array(z.string().url()).max(10, "Máximo 10 archivos"),
+    paymentStatus: z.enum([
+      CostPaymentStatus.PAID,
+      CostPaymentStatus.ACCOUNTS_PAYABLE,
+    ]),
+    expenseReportStatus: z.enum([
+      CostExpenseReportStatus.PENDING_REPORT,
+      CostExpenseReportStatus.REPORTED_WITH_RECEIPT,
+      CostExpenseReportStatus.REPORTED_WITHOUT_RECEIPT,
+    ]),
   })
   .refine(
     (data) => data.currency !== Currency.NIO || (data.exchangeRate && data.exchangeRate > 0),

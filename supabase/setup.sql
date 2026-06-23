@@ -11,7 +11,7 @@ CREATE POLICY "receipts_public_read"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'receipts');
 
--- Usuarios autenticados suben solo a su carpeta
+-- Usuarios autenticados suben solo a su carpeta ({user_id}/... o {user_id}/avatars/...)
 CREATE POLICY "receipts_auth_upload"
 ON storage.objects FOR INSERT
 TO authenticated

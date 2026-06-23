@@ -18,7 +18,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { IconPicker } from "@/components/config/icon-picker";
 import { createBusinessUnit } from "@/lib/actions/business-units";
+import { DEFAULT_BUSINESS_UNIT_ICON } from "@/lib/business-unit-icons";
 import {
   businessUnitSchema,
   type BusinessUnitFormValues,
@@ -33,6 +35,7 @@ export function CreateBusinessUnitForm() {
     defaultValues: {
       name: "",
       description: "",
+      icon: DEFAULT_BUSINESS_UNIT_ICON,
     },
   });
 
@@ -88,6 +91,19 @@ export function CreateBusinessUnitForm() {
                       {...field}
                       value={field.value ?? ""}
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="icon"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Seleccionar icono</FormLabel>
+                  <FormControl>
+                    <IconPicker value={field.value} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

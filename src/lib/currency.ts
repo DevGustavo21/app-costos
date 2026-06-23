@@ -91,15 +91,50 @@ export function resolveIncomeDisplay(
   const isVolume = entry.saleQuantity != null && entry.unitPrice != null;
   const currency =
     isVolume && options.volumePricing ? Currency.NIO : entry.currency;
-  const exchangeRate =
-    entry.exchangeRate ??
-    options.defaultExchangeRate;
+  const exchangeRate = entry.exchangeRate ?? options.defaultExchangeRate;
 
-  const amountNio = computeAmountNio(entry.amount, currency, exchangeRate);
+  const amountNio =
+    currency === Currency.NIO
+      ? entry.amount
+      : computeAmountNio(entry.amount, Currency.USD, exchangeRate);
   const amountUsd =
     currency === Currency.NIO
       ? computeAmountUsd(entry.amount, Currency.NIO, exchangeRate)
       : Number(entry.amountUsd);
 
   return { currency, exchangeRate, amountNio, amountUsd };
+}
+
+type CostDisplayEntry = {
+  currency: Currency;
+  amount: number;
+  amountUsd: number;
+  exchangeRate: number | null;
+};
+
+/** Montos C$ y USD para mostrar en tablas de costos. */
+export function resolveCostDisplay(
+  entry: CostDisplayEntry,
+  options: { defaultExchangeRate: number }
+) {
+  const exchangeRate = entry.exchangeRate ?? options.defaultExchangeRate;
+  const amountNio =
+    entry.currency === Currency.NIO
+      ? entry.amount
+      : computeAmountNio(entry.amount, Currency.USD, exchangeRate);
+  const amountUsd =
+    entry.currency === Currency.USD
+      ? entry.amount
+      : Number(entry.amountUsd);
+
+  return { exchangeRate, amountNio, amountUsd };
+}
+
+export async function resolveExchangeRate(
+  businessUnitId: string,
+  currency: Currency,
+  exchangeRate?: number | null
+): Promise<number | null> {
+  if (exchangeRate && exchangeRate > 0) return exchangeRate;
+  return getExchangeRate(businessUnitId);
 }

@@ -38,6 +38,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import type { BusinessUnitNav } from "@/components/layout/business-units-nav";
+import { BusinessUnitIcon } from "@/components/shared/business-unit-icon";
 import { cn } from "@/lib/utils";
 import { isViewerRole } from "@/lib/permissions";
 
@@ -47,6 +48,8 @@ export type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   businessUnitName?: string;
   userName?: string | null;
   userEmail?: string;
+  userAvatarUrl?: string | null;
+  userAvatarPreset?: string | null;
   businessUnits?: BusinessUnitNav[];
   canManageUsers?: boolean;
   canCreateBusinessUnit?: boolean;
@@ -241,6 +244,8 @@ function BusinessUnitNavCollapsible({
     isNavHrefActive(pathname, item.href, item.exact)
   );
 
+  const UnitIcon = () => <BusinessUnitIcon name={unit.icon} className="size-4" />;
+
   return (
     <Collapsible
       defaultOpen={forceOpen ?? isUnitActive}
@@ -256,7 +261,7 @@ function BusinessUnitNavCollapsible({
                 "font-medium data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary [&_svg]:text-sidebar-foreground"
             )}
           >
-            <Building2 />
+            <UnitIcon />
             <span>{unit.name}</span>
             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/unit:rotate-90" />
           </SidebarMenuButton>
@@ -314,6 +319,8 @@ export function AppSidebar({
   businessUnitName = "Multinegocios",
   userName,
   userEmail,
+  userAvatarUrl,
+  userAvatarPreset,
   businessUnits = [],
   canManageUsers = false,
   canCreateBusinessUnit = false,
@@ -322,6 +329,8 @@ export function AppSidebar({
   const user = {
     name: userName ?? "Usuario",
     email: userEmail ?? "",
+    avatarUrl: userAvatarUrl,
+    avatarPreset: userAvatarPreset,
   };
 
   return (

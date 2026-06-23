@@ -11,7 +11,8 @@
     "lint": "next lint",
     "db:seed": "npx tsx supabase/seed.ts",
     "db:cleanup-demo": "npx tsx supabase/cleanup-demo.ts",
-    "db:migrate": "npx tsx supabase/migrate.ts"
+    "db:migrate": "npx tsx supabase/migrate.ts",
+    "icons:generate": "node scripts/generate-icon-catalog.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -19,6 +20,11 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.4.0",
+    "@iconify-json/fa6-solid": "^1.2.4",
+    "@iconify-json/game-icons": "^1.2.4",
+    "@iconify-json/lucide": "^1.2.114",
+    "@iconify-json/mdi": "^1.2.3",
+    "@iconify/react": "^6.0.2",
     "@radix-ui/react-accordion": "^1.2.14",
     "@radix-ui/react-avatar": "^1.2.0",
     "@radix-ui/react-dialog": "^1.1.17",

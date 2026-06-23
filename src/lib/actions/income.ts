@@ -1,11 +1,16 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
-import { Currency, Role } from "@/types/database";
+import { Currency, EntryType, Role } from "@/types/database";
 import { db, newId, dateOnly } from "@/lib/db/helpers";
 import { mapIncomeEntry, mapPlant } from "@/lib/db/mappers";
 import { requireBusinessUnitAccess } from "@/lib/business-unit";
-import { computeAmountUsd, getExchangeRate } from "@/lib/currency";
+import { computeAmountUsd, resolveExchangeRate } from "@/lib/currency";
+import {
+  buildIncomeSnapshot,
+  getEntryChangelog,
+  logEntryChange,
+} from "@/lib/entry-changelog";
 import {
   aggregateStockQuantities,
   applyStockDeltas,
@@ -36,10 +41,11 @@ async function resolveIncomeFinancials(
     parsed.isVolumeSale && parsed.saleQuantity && parsed.unitPrice
   );
   const currency = isVolumeSale ? Currency.NIO : parsed.currency;
-  const exchangeRate =
-    currency === Currency.NIO
-      ? (parsed.exchangeRate ?? (await getExchangeRate(businessUnitId)))
-      : null;
+  const exchangeRate = await resolveExchangeRate(
+    businessUnitId,
+    currency,
+    parsed.exchangeRate
+  );
   const amountUsd = computeAmountUsd(amount, currency, exchangeRate);
   return { currency, exchangeRate, amountUsd };
 }
@@ -97,6 +103,30 @@ function revalidateIncome(businessUnitId: string) {
   revalidateTag(PLANTS_TAG(businessUnitId));
 }
 
+function incomeSnapshotFromEntry(
+  entry: ReturnType<typeof mapIncomeEntry>
+) {
+  return buildIncomeSnapshot({
+    date: entry.date,
+    categoryId: entry.categoryId,
+    categoryName: entry.category?.name,
+    description: entry.description,
+    currency: entry.currency,
+    amount: entry.amount,
+    exchangeRate: entry.exchangeRate,
+    amountUsd: entry.amountUsd,
+    collectionStatus: entry.collectionStatus,
+    saleQuantity: entry.saleQuantity,
+    unitPrice: entry.unitPrice,
+    lines: entry.lines?.map((line) => ({
+      plantName: line.plant?.name,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      subtotal: line.subtotal,
+    })),
+  });
+}
+
 export async function createIncomeEntry(businessUnitId: string, data: unknown) {
   const { user } = await requireBusinessUnitAccess(businessUnitId, Role.ACCOUNTANT);
   const parsed = incomeActionSchema.parse({ ...(data as object), businessUnitId });
@@ -136,6 +166,7 @@ export async function createIncomeEntry(businessUnitId: string, data: unknown) {
     unit_price: unitPrice,
     exchange_rate: rate,
     amount_usd: amountUsd,
+    collection_status: parsed.collectionStatus,
     created_by_id: user.id,
   });
 
@@ -177,10 +208,20 @@ export async function createIncomeEntry(businessUnitId: string, data: unknown) {
 
   if (error) throw error;
 
+  const mapped = mapIncomeEntry({ ...entry, lines: entry.income_lines });
+  await logEntryChange({
+    businessUnitId,
+    entryType: EntryType.INCOME,
+    entryId: mapped.id,
+    action: "CREATE",
+    snapshot: incomeSnapshotFromEntry(mapped),
+    changedById: user.id,
+  });
+
   revalidateIncome(businessUnitId);
   return {
     success: true,
-    entry: mapIncomeEntry({ ...entry, lines: entry.income_lines }),
+    entry: mapped,
   };
 }
 
@@ -189,8 +230,22 @@ export async function updateIncomeEntry(
   id: string,
   data: unknown
 ) {
-  await requireBusinessUnitAccess(businessUnitId, Role.ACCOUNTANT);
+  const { user } = await requireBusinessUnitAccess(businessUnitId, Role.ACCOUNTANT);
   const parsed = incomeActionSchema.parse({ ...(data as object), businessUnitId, id });
+
+  const { data: existingRow, error: existingError } = await db()
+    .from("income_entries")
+    .select("*, categories(*), income_lines(*, plants(*))")
+    .eq("id", id)
+    .eq("business_unit_id", businessUnitId)
+    .single();
+
+  if (existingError || !existingRow) throw new Error("Ingreso no encontrado");
+
+  const previousEntry = mapIncomeEntry({
+    ...existingRow,
+    lines: existingRow.income_lines,
+  });
 
   const previousQuantities = await loadEntryLineQuantities(id);
   const linesData = await buildCatalogLines(parsed, businessUnitId);
@@ -237,6 +292,7 @@ export async function updateIncomeEntry(
         unit_price: unitPrice,
         exchange_rate: rate,
         amount_usd: amountUsd,
+        collection_status: parsed.collectionStatus,
       })
       .eq("id", id)
       .eq("business_unit_id", businessUnitId);
@@ -272,10 +328,21 @@ export async function updateIncomeEntry(
 
   if (error) throw error;
 
+  const mapped = mapIncomeEntry({ ...entry, lines: entry.income_lines });
+  await logEntryChange({
+    businessUnitId,
+    entryType: EntryType.INCOME,
+    entryId: mapped.id,
+    action: "UPDATE",
+    snapshot: incomeSnapshotFromEntry(mapped),
+    previousSnapshot: incomeSnapshotFromEntry(previousEntry),
+    changedById: user.id,
+  });
+
   revalidateIncome(businessUnitId);
   return {
     success: true,
-    entry: mapIncomeEntry({ ...entry, lines: entry.income_lines }),
+    entry: mapped,
   };
 }
 
@@ -304,4 +371,12 @@ export async function deleteIncomeEntry(businessUnitId: string, id: string) {
 
   revalidateIncome(businessUnitId);
   return { success: true };
+}
+
+export async function fetchIncomeChangelog(
+  businessUnitId: string,
+  entryId: string
+) {
+  await requireBusinessUnitAccess(businessUnitId, Role.VIEWER);
+  return getEntryChangelog(businessUnitId, EntryType.INCOME, entryId);
 }

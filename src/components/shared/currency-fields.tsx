@@ -25,15 +25,15 @@ type CurrencyFieldsProps = {
   defaultExchangeRate?: number;
   /** Si se define, la moneda queda fija (p. ej. ventas por volumen en córdobas). */
   fixedCurrency?: Currency;
-  /** Solo muestra el selector de moneda (sin tasa de cambio). */
-  currencyOnly?: boolean;
+  /** Muestra siempre el campo de tasa de cambio. */
+  showExchangeRate?: boolean;
 };
 
 export function CurrencyFields({
   form,
   defaultExchangeRate,
   fixedCurrency,
-  currencyOnly = false,
+  showExchangeRate = false,
 }: CurrencyFieldsProps) {
   const currency = (fixedCurrency ?? form.watch("currency")) as Currency;
 
@@ -44,10 +44,13 @@ export function CurrencyFields({
   }, [fixedCurrency, form]);
 
   useEffect(() => {
-    if (currency === Currency.NIO && defaultExchangeRate && !form.getValues("exchangeRate")) {
+    if (defaultExchangeRate && !form.getValues("exchangeRate")) {
       form.setValue("exchangeRate", defaultExchangeRate);
     }
   }, [currency, defaultExchangeRate, form]);
+
+  const displayExchangeRate =
+    showExchangeRate || currency === Currency.NIO || fixedCurrency === Currency.NIO;
 
   return (
     <>
@@ -58,10 +61,13 @@ export function CurrencyFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Moneda</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Seleccionar moneda" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -75,7 +81,7 @@ export function CurrencyFields({
         />
       )}
 
-      {currency === Currency.NIO && !currencyOnly && (
+      {displayExchangeRate && (
         <FormField
           control={form.control}
           name="exchangeRate"

@@ -24,6 +24,8 @@ import {
   type BusinessUnitFormValues,
 } from "@/lib/validations/business-unit";
 import type { BusinessUnit } from "@/types/database";
+import { IconPicker } from "@/components/config/icon-picker";
+import { DEFAULT_BUSINESS_UNIT_ICON } from "@/lib/business-unit-icons";
 
 type BusinessUnitSettingsFormProps = {
   businessUnit: BusinessUnit;
@@ -40,6 +42,7 @@ export function BusinessUnitSettingsForm({
     defaultValues: {
       name: businessUnit.name,
       description: businessUnit.description ?? "",
+      icon: businessUnit.icon ?? DEFAULT_BUSINESS_UNIT_ICON,
     },
   });
 
@@ -98,6 +101,19 @@ export function BusinessUnitSettingsForm({
                       {...field}
                       value={field.value ?? ""}
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="icon"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Seleccionar icono</FormLabel>
+                  <FormControl>
+                    <IconPicker value={field.value} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

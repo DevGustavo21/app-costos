@@ -41,19 +41,18 @@ export function unwrapJoin<T>(rel: T | T[] | null | undefined): T | null {
 }
 
 export function formatMonthKey(date: string | Date): string {
-  const d = new Date(date);
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  const d = typeof date === "string" ? parseLocalDate(date) : normalizePickerDate(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export function formatMonthLabel(date: string | Date): string {
+  const d = typeof date === "string" ? parseLocalDate(date) : normalizePickerDate(date);
   return new Intl.DateTimeFormat("es", {
     month: "long",
     year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(date));
+  }).format(d);
 }
 
 export function getCurrentMonthKey(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return formatMonthKey(dateOnly(new Date()));
 }

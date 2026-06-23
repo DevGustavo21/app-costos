@@ -4,7 +4,7 @@ import { useEffect, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Category, Currency, IncomeEntryWithRelations, Plant } from "@/types/database";
+import { Category, Currency, IncomeEntryWithRelations, Plant, IncomeCollectionStatus } from "@/types/database";
 import { getMeasurementUnitLabel, getMeasurementUnitShort } from "@/lib/measurement-unit";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,10 +42,16 @@ import {
   tracksStock,
   validateCatalogStock,
 } from "@/lib/stock-client";
+import {
+  getIncomeCollectionStatusLabel,
+  INCOME_COLLECTION_STATUS_OPTIONS,
+} from "@/lib/entry-labels";
 
-function getEmptyIncomeValues(): DefaultValues<IncomeEntryFormValues> {
+function getEmptyIncomeValues(defaultDate?: string): DefaultValues<IncomeEntryFormValues> {
   return {
-    date: normalizePickerDate(new Date()),
+    date: defaultDate
+      ? parseLocalDate(defaultDate)
+      : normalizePickerDate(new Date()),
     categoryId: "",
     description: "",
     currency: Currency.USD,
@@ -56,6 +62,7 @@ function getEmptyIncomeValues(): DefaultValues<IncomeEntryFormValues> {
     saleQuantity: undefined,
     unitPrice: undefined,
     lines: [],
+    collectionStatus: IncomeCollectionStatus.RECEIVED,
   };
 }
 
@@ -77,9 +84,10 @@ function buildIncomeFormValues(
   editEntry: IncomeEntryWithRelations | null | undefined,
   categories: Category[],
   plants: Plant[],
-  defaultExchangeRate: number
+  defaultExchangeRate: number,
+  defaultDate?: string
 ): DefaultValues<IncomeEntryFormValues> {
-  if (!editEntry) return getEmptyIncomeValues();
+  if (!editEntry) return getEmptyIncomeValues(defaultDate);
 
   const lineValues = (editEntry.lines ?? []).map((l) => ({
     plantId: l.plantId ?? "",
@@ -107,6 +115,7 @@ function buildIncomeFormValues(
     saleQuantity: editEntry.saleQuantity ?? undefined,
     unitPrice: editEntry.unitPrice ?? undefined,
     lines: lineValues,
+    collectionStatus: editEntry.collectionStatus,
   };
 }
 
@@ -115,6 +124,7 @@ type IncomeFormProps = {
   categories: Category[];
   plants: Plant[];
   defaultExchangeRate: number;
+  defaultDate?: string;
   editEntry?: IncomeEntryWithRelations | null;
   onEditComplete?: () => void;
 };
@@ -124,6 +134,7 @@ export function IncomeForm({
   categories,
   plants,
   defaultExchangeRate,
+  defaultDate,
   editEntry,
   onEditComplete,
 }: IncomeFormProps) {
@@ -131,8 +142,15 @@ export function IncomeForm({
   const [isPending, startTransition] = useTransition();
 
   const initialValues = useMemo(
-    () => buildIncomeFormValues(editEntry, categories, plants, defaultExchangeRate),
-    [editEntry, categories, plants, defaultExchangeRate]
+    () =>
+      buildIncomeFormValues(
+        editEntry,
+        categories,
+        plants,
+        defaultExchangeRate,
+        defaultDate
+      ),
+    [editEntry, categories, plants, defaultExchangeRate, defaultDate]
   );
 
   const form = useForm<IncomeEntryFormValues>({
@@ -180,8 +198,6 @@ export function IncomeForm({
     const cat = categories.find((c) => c.id === selectedCategoryId);
     return (cat?.isPlantCategory ?? false) || catalogProducts.length > 0;
   }, [selectedCategoryId, categories, catalogProducts.length]);
-
-  const showExchangeRate = usesCatalog || currency === Currency.NIO;
 
   useEffect(() => {
     if (editEntry) return;
@@ -318,6 +334,31 @@ export function IncomeForm({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="collectionStatus"
+              render={({ field }) => (
+                <FormItem className="max-w-sm">
+                  <FormLabel>Estado</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {INCOME_COLLECTION_STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {getIncomeCollectionStatusLabel(status)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -489,42 +530,23 @@ export function IncomeForm({
             )}
 
             {!usesCatalog && (
-              <CurrencyFields
-                form={form}
-                defaultExchangeRate={defaultExchangeRate}
-                currencyOnly
-              />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <CurrencyFields
+                  form={form}
+                  defaultExchangeRate={defaultExchangeRate}
+                  showExchangeRate
+                />
+              </div>
             )}
 
-            {showExchangeRate ? (
+            {usesCatalog ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {usesCatalog ? (
-                  <div className="flex min-h-9 flex-col justify-end rounded-md border border-input bg-muted/30 px-3 py-2">
-                    <span className="text-xs text-muted-foreground">Total calculado</span>
-                    <span className="text-sm font-semibold tabular-nums">
-                      {formatNio(calculatedTotal)}
-                    </span>
-                  </div>
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel>Monto total</FormLabel>
-                        <FormControl>
-                          <MoneyInput
-                            value={field.value}
-                            onChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
+                <div className="flex min-h-9 flex-col justify-end rounded-md border border-input bg-muted/30 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">Total calculado</span>
+                  <span className="text-sm font-semibold tabular-nums">
+                    {formatNio(calculatedTotal)}
+                  </span>
+                </div>
                 <FormField
                   control={form.control}
                   name="exchangeRate"
@@ -550,7 +572,9 @@ export function IncomeForm({
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Monto total</FormLabel>
+                    <FormLabel>
+                      Monto total ({currency === Currency.NIO ? "C$" : "USD"})
+                    </FormLabel>
                     <FormControl>
                       <MoneyInput
                         value={field.value}

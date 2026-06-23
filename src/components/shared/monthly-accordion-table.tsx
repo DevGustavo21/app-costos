@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { formatUsd } from "@/lib/currency";
 import {
   Accordion,
@@ -30,6 +31,13 @@ export function MonthlyAccordionTable<T>({
   emptyMessage = "No hay registros",
   filters,
 }: MonthlyAccordionTableProps<T>) {
+  const openMonths = React.useMemo(() => {
+    if (months.some((month) => month.monthKey === defaultMonthKey)) {
+      return [defaultMonthKey];
+    }
+    return months[0] ? [months[0].monthKey] : [];
+  }, [months, defaultMonthKey]);
+
   if (months.length === 0) {
     return (
       <div className="overflow-hidden rounded-xl bg-card shadow-sm">
@@ -46,7 +54,7 @@ export function MonthlyAccordionTable<T>({
       {filters}
       <Accordion
         type="multiple"
-        defaultValue={[defaultMonthKey]}
+        defaultValue={openMonths}
         className="w-full"
       >
         {months.map((month) => (

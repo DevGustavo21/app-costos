@@ -7,6 +7,7 @@ import { getIncomeGroupedByMonth } from "@/lib/queries/income";
 import { getCurrentMonthKey } from "@/lib/queries/costs";
 import { getExchangeRate } from "@/lib/currency";
 import { canWriteEntries, isViewerRole } from "@/lib/permissions";
+import { dateOnly } from "@/lib/db/helpers";
 import { IngresosClient } from "./ingresos-client";
 
 export default async function IngresosPage({
@@ -50,6 +51,7 @@ export default async function IngresosPage({
       plants={plants}
       months={months}
       defaultMonthKey={getCurrentMonthKey()}
+      defaultDate={dateOnly(new Date())}
       defaultExchangeRate={defaultExchangeRate}
       canWrite={canWriteEntries(membership.role)}
     />

@@ -15,6 +15,16 @@ import { slugify } from "@/lib/slug";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
+function parseReceiptUrls(row: Row): string[] {
+  if (Array.isArray(row.receipt_urls)) {
+    return row.receipt_urls.filter(
+      (url): url is string => typeof url === "string" && url.length > 0
+    );
+  }
+  if (row.receipt_url) return [row.receipt_url as string];
+  return [];
+}
+
 export function mapCategory(row: Row): Category {
   return {
     id: row.id,
@@ -59,7 +69,9 @@ export function mapCostEntry(row: Row): CostEntry {
     amount: Number(row.amount),
     exchangeRate: row.exchange_rate != null ? Number(row.exchange_rate) : null,
     amountUsd: Number(row.amount_usd),
-    receiptUrl: row.receipt_url,
+    receiptUrls: parseReceiptUrls(row),
+    paymentStatus: row.payment_status ?? "ACCOUNTS_PAYABLE",
+    expenseReportStatus: row.expense_report_status ?? "PENDING_REPORT",
     createdById: row.created_by_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -93,6 +105,7 @@ export function mapIncomeEntry(row: Row): IncomeEntry {
     unitPrice: row.unit_price != null ? Number(row.unit_price) : null,
     exchangeRate: row.exchange_rate != null ? Number(row.exchange_rate) : null,
     amountUsd: Number(row.amount_usd),
+    collectionStatus: row.collection_status ?? "RECEIVED",
     createdById: row.created_by_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -108,6 +121,7 @@ export function mapBusinessUnit(row: Row): BusinessUnit {
     slug: row.slug ?? (slugify(row.name ?? "") || row.id),
     name: row.name,
     description: row.description,
+    icon: row.icon ?? null,
     measurementUnit,
     basePricePerUnit:
       row.base_price_per_unit != null ? Number(row.base_price_per_unit) : null,
@@ -135,6 +149,9 @@ export function mapUser(row: Row) {
     id: row.id,
     name: row.name,
     email: row.email,
+    phone: row.phone ?? null,
+    avatarUrl: row.avatar_url ?? null,
+    avatarPreset: row.avatar_preset ?? null,
     createdAt: row.created_at,
   };
 }

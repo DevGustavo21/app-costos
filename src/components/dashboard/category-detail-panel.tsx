@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatUsd } from "@/lib/currency";
+import { parseLocalDate } from "@/lib/db/helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DashboardPeriod } from "@/lib/queries/dashboard";
@@ -121,7 +122,7 @@ export function CategoryDetailPanel({
               >
                 <div>
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(item.date), "dd MMM yyyy", { locale: es })}
+                    {format(parseLocalDate(item.date), "dd MMM yyyy", { locale: es })}
                   </p>
                   <p>{item.description ?? "—"}</p>
                 </div>

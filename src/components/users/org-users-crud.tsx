@@ -171,6 +171,7 @@ function OrgUserForm({
               <FormControl>
                 <Input
                   type="password"
+                  autoComplete={editingId ? "new-password" : "new-password"}
                   placeholder={
                     editingId ? "Dejar vacío para no cambiar" : "Mínimo 6 caracteres"
                   }

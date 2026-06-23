@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
@@ -241,6 +241,7 @@ export function ChartAreaInteractive() {
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} />
+            <YAxis hide domain={[0, "auto"]} />
             <XAxis
               dataKey="date"
               tickLine={false}
@@ -271,14 +272,16 @@ export function ChartAreaInteractive() {
             />
             <Area
               dataKey="mobile"
-              type="natural"
+              type="linear"
+              baseValue={0}
               fill="url(#fillMobile)"
               stroke="var(--color-mobile)"
               stackId="a"
             />
             <Area
               dataKey="desktop"
-              type="natural"
+              type="linear"
+              baseValue={0}
               fill="url(#fillDesktop)"
               stroke="var(--color-desktop)"
               stackId="a"

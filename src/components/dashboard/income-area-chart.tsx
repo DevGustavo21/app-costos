@@ -9,7 +9,7 @@ import {
   format,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import {
   Card,
@@ -215,6 +215,7 @@ export function IncomeAreaChart({ data }: IncomeAreaChartProps) {
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} />
+              <YAxis hide domain={[0, "auto"]} />
               <XAxis
                 dataKey="date"
                 tickLine={false}
@@ -236,7 +237,8 @@ export function IncomeAreaChart({ data }: IncomeAreaChartProps) {
               />
               <Area
                 dataKey="desktop"
-                type="natural"
+                type="linear"
+                baseValue={0}
                 fill="url(#fillDesktop)"
                 stroke="var(--color-desktop)"
               />

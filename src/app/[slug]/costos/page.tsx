@@ -5,6 +5,7 @@ import { getCategories } from "@/lib/actions/categories";
 import { getCostsGroupedByMonth, getCurrentMonthKey } from "@/lib/queries/costs";
 import { getExchangeRate } from "@/lib/currency";
 import { canWriteEntries, isViewerRole } from "@/lib/permissions";
+import { dateOnly } from "@/lib/db/helpers";
 import { CostosClient } from "./costos-client";
 
 export default async function CostosPage({
@@ -44,6 +45,7 @@ export default async function CostosPage({
       categories={categories}
       months={months}
       defaultMonthKey={getCurrentMonthKey()}
+      defaultDate={dateOnly(new Date())}
       defaultExchangeRate={defaultExchangeRate}
       canWrite={canWriteEntries(membership.role)}
     />

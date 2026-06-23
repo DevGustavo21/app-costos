@@ -7,6 +7,8 @@ type OrgShellProps = {
   children: React.ReactNode;
   userName?: string | null;
   userEmail?: string;
+  userAvatarUrl?: string | null;
+  userAvatarPreset?: string | null;
   businessUnits?: BusinessUnitNav[];
   canManageUsers?: boolean;
   canCreateBusinessUnit?: boolean;
@@ -16,6 +18,8 @@ export function OrgShell({
   children,
   userName,
   userEmail,
+  userAvatarUrl,
+  userAvatarPreset,
   businessUnits = [],
   canManageUsers = false,
   canCreateBusinessUnit = false,
@@ -25,6 +29,8 @@ export function OrgShell({
       mode="org"
       userName={userName}
       userEmail={userEmail}
+      userAvatarUrl={userAvatarUrl}
+      userAvatarPreset={userAvatarPreset}
       businessUnits={businessUnits}
       canManageUsers={canManageUsers}
       canCreateBusinessUnit={canCreateBusinessUnit}

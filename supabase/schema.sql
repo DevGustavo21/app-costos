@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS cost_entries (
   exchange_rate NUMERIC(10, 4),
   amount_usd NUMERIC(12, 2) NOT NULL,
   receipt_url TEXT,
+  receipt_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_by_id UUID REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
